@@ -1,4 +1,3 @@
-![Screenshot](https://raw.githubusercontent.com/koendv/Anki-Android/hotfix-2.8.3/docs/shui.png)
 
 This is Anki with Tones. Anki flashcards, with the following additional features for studying Chinese tones:
 
@@ -7,6 +6,7 @@ This is Anki with Tones. Anki flashcards, with the following additional features
 
 This only runs on Android, sorry.
 
+![Screenshot](https://raw.githubusercontent.com/koendv/Anki-Android/hotfix-2.8.3/docs/shui.png)
 
 Usage
 -----
