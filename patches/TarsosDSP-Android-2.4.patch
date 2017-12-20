@@ -1,0 +1,69 @@
+Only in TarsosDSP-master/: bin
+diff -cr ORIG/TarsosDSP-master/build/build.xml TarsosDSP-master/build/build.xml
+*** ORIG/TarsosDSP-master/build/build.xml	2017-10-24 07:57:51.000000000 -0400
+--- TarsosDSP-master/build/build.xml	2017-12-08 08:13:38.811185114 -0500
+***************
+*** 8,14 ****
+  	
+  	<!-- If you want to build an Android TarsosDSP jar file, please download the Android SDK and 
+  	     Fix   -->
+! 	<property name="android_jar" value="/opt/Android/android-sdk-linux/platforms/android-22/android.jar" />
+  
+  	<!-- run the ant timestamp task -->
+  	<tstamp />
+--- 8,14 ----
+  	
+  	<!-- If you want to build an Android TarsosDSP jar file, please download the Android SDK and 
+  	     Fix   -->
+! 	<property name="android_jar" value="/opt/android-sdk/platforms/android-22/android.jar" />
+  
+  	<!-- run the ant timestamp task -->
+  	<tstamp />
+Only in TarsosDSP-master/build: doant
+Only in TarsosDSP-master/build: docp
+Only in TarsosDSP-master/build: TarsosDSP-Android-2.4-bin.jar
+Only in TarsosDSP-master/build: TarsosDSP-Android-2.4.jar
+diff -cr ORIG/TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioInputStream.java TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioInputStream.java
+*** ORIG/TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioInputStream.java	2017-10-24 07:57:51.000000000 -0400
+--- TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioInputStream.java	2017-12-17 03:18:36.663740281 -0500
+***************
+*** 50,56 ****
+  
+  	@Override
+  	public void close() throws IOException {
+! 		underlyingStream.stop();
+  		underlyingStream.release();
+  	}
+  
+--- 50,58 ----
+  
+  	@Override
+  	public void close() throws IOException {
+!         if (underlyingStream.getState() != AudioRecord.STATE_UNINITIALIZED) {
+! 		    underlyingStream.stop();
+!         }
+  		underlyingStream.release();
+  	}
+  
+diff -cr ORIG/TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioPlayer.java TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioPlayer.java
+*** ORIG/TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioPlayer.java	2017-10-24 07:57:51.000000000 -0400
+--- TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioPlayer.java	2017-12-08 09:40:07.186903785 -0500
+***************
+*** 103,109 ****
+      @Override
+      public void processingFinished() {
+          audioTrack.flush();
+!         audioTrack.stop();
+          audioTrack.release();
+      }
+  }
+--- 103,111 ----
+      @Override
+      public void processingFinished() {
+          audioTrack.flush();
+!         if (audioTrack.getState() != AudioTrack.STATE_UNINITIALIZED) {
+!             audioTrack.stop();
+!         }
+          audioTrack.release();
+      }
+  }

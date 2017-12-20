@@ -110,3 +110,6 @@ scale up, but not down.  */
 .night_mode .replaybutton svg {
   fill: white;
 }
+.pitch_graph {
+  height: 150px;
+}

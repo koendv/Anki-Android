@@ -82,6 +82,7 @@ import com.ichi2.libanki.Card;
 import com.ichi2.libanki.Collection;
 import com.ichi2.libanki.Consts;
 import com.ichi2.libanki.Note;
+import com.ichi2.libanki.Pitch;
 import com.ichi2.libanki.Sched;
 import com.ichi2.libanki.Sound;
 import com.ichi2.libanki.Utils;
@@ -910,6 +911,9 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
 
         // Initialize dictionary lookup feature
         Lookup.initialize(this);
+
+        // Initialize pitch feature
+        Pitch.initialize(this);
 
         updateScreenCounts();
         supportInvalidateOptionsMenu();
@@ -2870,5 +2874,20 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
     protected void dismiss(Collection.DismissType type) {
         DeckTask.launchDeckTask(DeckTask.TASK_TYPE_DISMISS, mDismissCardHandler,
                 new DeckTask.TaskData(new Object[]{mCurrentCard, type}));
+    }
+
+    /* Hook to execute javascript in this cards' webview */
+    public void runJavaScript(String js) {
+        final String jScript = "javascript:" + js;
+        if (mCard != null) {
+            Timber.i(jScript);
+            /* need to call javascript from same thread as Webview */
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mCard.loadUrl(jScript);
+                }
+            });
+        }
     }
 }

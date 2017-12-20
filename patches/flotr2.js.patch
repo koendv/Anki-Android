@@ -1,0 +1,42 @@
+*** flotr2.js.ORIG	2017-12-20 05:43:54.372441883 -0500
+--- flotr2.js	2017-12-20 05:44:17.029304566 -0500
+***************
+*** 3487,3492 ****
+--- 3487,3493 ----
+      fillBorder: false,     // => draw a border around the fill
+      fillColor: null,       // => fill color
+      fillOpacity: 0.4,      // => opacity of the fill color, set to 1 for a solid fill, 0 hides the fill
++     radius: 3,             // => radius of circle drawn on top of data points
+      steps: false,          // => draw steps
+      stacked: false         // => setting to true will show stacked lines, false will show normal lines
+    },
+***************
+*** 3637,3642 ****
+--- 3638,3664 ----
+      }
+  
+      context.closePath();
++ 
++     /* draw data points */ 
++     for (i = data.length - 1; i > -1; --i) {
++       y = data[i][1];
++       if (y === null) continue;
++ 
++       x = xScale(data[i][0]);
++       y = yScale(y);
++ 
++       if (x < 0 || x > options.width || y < 0 || y > options.height) continue;
++ 
++       context.beginPath();
++       context.arc(x, y + shadowOffset, options.radius, 0, 2 * Math.PI, false);
++       context.closePath();
++       if (options.fill) {
++         context.fillStyle = options.fillStyle;
++         context.fill();
++       }
++       context.stroke();
++     }
++ 
+    },
+  
+    // Perform any pre-render precalculations (this should be run on data first)

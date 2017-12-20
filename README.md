@@ -1,21 +1,26 @@
-A semi-official port of the open source [Anki](http://ankisrs.net/index.html) spaced repetition flashcard system to Android. Memorize anything with AnkiDroid!
+This is Anki with Tones. 
 
-![Screenshot](https://raw.githubusercontent.com/ankidroid/ankidroiddocs/master/img/4-reviewer.png)
+It's Anki flashcards, with the following additional features for studying Chinese tones:
 
-Install
--------
-Install directly from [here on github](https://github.com/ankidroid/Anki-Android/releases/latest) or stay up-to-date
-automatically by installing via an app store:
+- graphs of your tones, drawn as you speak 
+- recording and replaying your speech
 
-<a href="https://play.google.com/store/apps/details?id=com.ichi2.anki&utm_source=global_co&utm_medium=prtnr&utm_content=Mar2515&utm_campaign=PartBadge&pcampaignid=MKT-Other-global-all-co-prtnr-py-PartBadge-Mar2515-1"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/images/generic/en-play-badge.png" height="50px"/></a>
-<a href="https://f-droid.org/repository/browse/?fdid=com.ichi2.anki"><img alt="F-Droid" src="https://upload.wikimedia.org/wikipedia/commons/0/0d/Get_it_on_F-Droid.svg" height="50px"/></a>
+This only runs on Android, sorry.
 
-Help
-----
-Check the [user manual](https://ankidroid.org/docs/manual.html) and the wiki for usage instructions. See the [help page](https://ankidroid.org/docs/help.html) 
-for how to submit a bug report or contact a project member, etc.
+Usage
+-----
 
-Contribute
-----------
-You can contribute to AnkiDroid by beta testing, translating, or submitting code. 
-See the [contribution wiki page](https://github.com/ankidroid/Anki-Android/wiki/Contributing) for more info.
+You need an Anki a card deck with sound, either as .WAV or as .MP3 files. 
+Other sound file formats may also work; but the main point is that it has to be sound *recordings*, not Text-To-Speech.
+
+In your desktop Anki, edit the card template and add the following to the template of the front or back of the card:
+[pitch]
+That is all. Synchronize your deck on your desktop. Go to your Android device and synchronize as well. 
+When you review the deck, your screen should be divided in two halves. 
+
+This is the reference pronounciation and its tones. This half has a small black triangle. The black triangle is the 'Play' button. Touch it and you should see the tones being drawn as the sound is played.
+
+The other half is for your pronounciation. This half has a small red dot, a small black square and a small black triangle. The red dot is the 'Record' button; the black square is the 'Stop' recording button, and the black triangle is the 'Play' button. Touch the red dot and repeat the word(s) on the flashcard. You should see the tones being drawn as you speak. When you have finished speaking, hit the black triangle and listen to your voice.
+
+TODO: Karaoke.
+
