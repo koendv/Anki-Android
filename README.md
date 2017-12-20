@@ -15,7 +15,9 @@ You need an Anki a card deck with sound, either as .WAV or as .MP3 files.
 Other sound file formats may also work; but the main point is that it has to be sound *recordings*, not Text-To-Speech.
 
 In your desktop Anki, edit the card template and add the following to the template of the front or back of the card:
+
 [pitch]
+
 That is all. Synchronize your deck on your desktop. Go to your Android device and synchronize as well. 
 When you review the deck, your screen should be divided in two halves. 
 
