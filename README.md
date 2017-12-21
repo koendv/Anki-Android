@@ -28,10 +28,12 @@ The bottom half is the reference pronounciation and its tones. This half has a s
 
 The top half is for your own pronounciation. This half has a small red dot, a small black square and a small black triangle. The red dot is the 'Record' button; the black square is the 'Stop' recording button, and the black triangle is the 'Play' button. Touch the red dot and repeat the word(s) on the flashcard. You should see the tones being drawn as you speak. When you have finished speaking, hit the black triangle and listen to your voice.
 
-Download
---------
+Downloads
+---------
 
 Pre-compiled .apk for Android : [AnkiDroid.apk](http://www.kdvelectronics.eu/anki_with_tones/AnkiDroid-debug-201217.apk)
+
+Sample Anki deck to practice Mandarin Chinese tones:  [Mandarin Tone Pair Drills](http://www.kdvelectronics.eu/anki_with_tones/Mandarin%20Tone%20Pair%20Drills.zip)
 
 Sources
 -------
