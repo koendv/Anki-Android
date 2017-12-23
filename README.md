@@ -6,7 +6,7 @@ This is Anki with Tones. Anki flashcards, with the following additional features
 
 This only runs on Android, sorry.
 
-![Screenshot](https://raw.githubusercontent.com/koendv/Anki-Android/hotfix-2.8.3/docs/shui.png)
+![Screenshot](https://raw.githubusercontent.com/koendv/Anki-Android/hotfix-2.8.3/docs/nanshuo.png)
 
 Usage
 -----
@@ -30,11 +30,13 @@ The top half is for your own pronounciation. This half has a small red dot, a sm
 
 FAQ
 ---
-- Q. Can't install the binary.
-- A. You may have to uninstall Anki first.
+Q. Can't install the binary.
 
-- Q. Recording sound does not work.
-- A. Open Settings -> Apps -> AnkiDroid -> Permissions. Check all permissions have been granted, especially 'Microphone'.
+A. You may have to uninstall Anki first. Also, check Settings -> Security -> Unknown sources is allowed.
+
+Q. Recording sound does not work.
+
+A. In Android, open Settings -> Apps -> AnkiDroid -> Permissions. Check all permissions have been granted, especially 'Microphone'.
 
 Downloads
 ---------
