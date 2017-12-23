@@ -30,15 +30,16 @@ The top half is for your own pronounciation. This half has a small red dot, a sm
 
 FAQ
 ---
-Q. Can't install the binary.
-A. You may have to uninstall Anki first.
+- Q. Can't install the binary.
+- A. You may have to uninstall Anki first.
 
-Q. Recording sound does not work.
-A. Open Settings -> Apps -> AnkiDroid -> Permissions. Check all permissions have been granted, especially 'Microphone'.
+- Q. Recording sound does not work.
+- A. Open Settings -> Apps -> AnkiDroid -> Permissions. Check all permissions have been granted, especially 'Microphone'.
 
 Downloads
 ---------
 This is beta software. Use at your own risk.
+
 Pre-compiled .apk for Android : [AnkiDroid.apk](http://www.kdvelectronics.eu/anki_with_tones/AnkiDroid-debug.apk)
 
 Sample Anki deck to practice Mandarin Chinese tones:  [Mandarin Tone Pair Drills](http://www.kdvelectronics.eu/anki_with_tones/Mandarin%20Tone%20Pair%20Drills.zip)
