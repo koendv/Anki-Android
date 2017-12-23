@@ -5,7 +5,7 @@
 var
     container = document.getElementById('pitch0'),
     data = [],
-    x_max = 1,
+    graph_number = 0,
     graph; 
 
 (function () {
@@ -16,33 +16,30 @@ var
 })();
 
 function graph_draw() {
+
+    if (graph_number == 0) {
+        container = document.getElementById('pitch0');
+    } else {
+        container = document.getElementById('pitch1');
+    };
+
     graph = Flotr.draw(container, [ data ], {
-        xaxis: { max: x_max, showLabels: false },
+        xaxis: { showLabels: false },
         yaxis: { showLabels: false, scaling: 'logarithmic' },
         lines: { show: true, fill: true},
-        grid:  {horizontalLines: false, minorHorizontalLines: false, verticalLines: false, minorVerticalLines: false, outline: ''}
+        grid:  { horizontalLines: false, minorHorizontalLines: false, verticalLines: false, minorVerticalLines: false, outline: ''}
     });
 }
 
 /*
  * begin drawing graph. 
- * graph_no is 0 or 1, depending upon whether we are drawing the tones 
- * of the question or the answer. sec_max is the length of the x-axis, in seconds.
+ * g is 0 or 1, depending upon whether we are drawing the tones of the question or the answer.
  */
 
-function graph_start(graph_no, sec_max) {
-
-    if (graph_no == 0) {
-        container = document.getElementById('pitch0');
-    } else {
-        container = document.getElementById('pitch1');
-    };
-        
+function graph_start(g) {
+    graph_number = g;
     data = [];
-    x_max = 1;
-    if (sec_max > x_max) {
-        x_max = sec_max;
-    }
+    graph_draw();
 }
 
 /* 
@@ -53,23 +50,16 @@ function graph_add(x, y) {
     /* frequency -1 means no tone detected */
     if (y == -1) {
         y = null;
+        if ((data.length == 0) || (data[data.length-1][1] == null)) return; /* already terminated */
     }
+
     /* "glitches". XXX fixme */
 
-    /* if tones is higher than 500, assume glitch. */
-    if (y > 500) return;
-
-/*
-    // if a sample has no tones, but the previous and the next sample have tone, assume glitch.
-    if ((data.length >= 3) && (data[data.length - 2][1] == null) && (data[data.length - 1][1] != null) && (data[data.length - 3][1] != null))
-      data.splice(data.length - 2, 1);
-*/
+    /* if tones is higher than 700, assume glitch. */
+    if (y > 700) return;
 
     /* add data pair */
     data.push([x, y]);
-    if (x > x_max) {
-        x_max = x;
-    }
     graph_draw();
 }
 

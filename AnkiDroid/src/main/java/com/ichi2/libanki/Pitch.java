@@ -53,9 +53,9 @@ import timber.log.Timber;
 
 public class Pitch {
 
-    private AudioDispatcher mAudioDispatcher;
-    private AndroidAudioPlayer mAndroidAudioPlayer;
-    private PitchProcessor mPitchProcessor;
+    private AudioDispatcher mAudioDispatcher = null;
+    private AndroidAudioPlayer mAndroidAudioPlayer = null;
+    private PitchProcessor mPitchProcessor = null;
     private String recordPath;
     private String playPath;
 
@@ -69,6 +69,7 @@ public class Pitch {
         File recordFile = null;
         try {
             recordFile = File.createTempFile("record", ".wav", recordDir);
+            recordFile.deleteOnExit();
         } catch (IOException e) {
             Timber.e("Failed to create temp .wav file");
             e.printStackTrace();
@@ -81,48 +82,45 @@ public class Pitch {
         mReviewer = new WeakReference<>(context);
     }
 
-    private double soundDuration(String soundPath) {
-        AudioDispatcher audioDispatcher = AudioDispatcherFactory.fromPipe(soundPath, 22050, 1024, 0);
-        DetermineDurationProcessor ddp = new DetermineDurationProcessor();
-        audioDispatcher.addAudioProcessor(ddp);
-        audioDispatcher.run();
-        return ddp.getDurationInSeconds();
-    }
-
     public void playSound(String soundPath) {
 
         Timber.i("recordPath" + recordPath); // XXX
 
         double duration_sec = 3; // XXX Default for recorded speech
 
-        if (soundPath.equals("@rec@")) {
-            /* rec.mp3: record from microphone to file "record.wav" */
-            mAudioDispatcher.stop();
-            mAudioDispatcher = AudioDispatcherFactory.fromDefaultMicrophone(22050, 1024, 0);
-            /* mAudioDispatcher.addAudioProcessor(new SilenceDetector()); */
-            try {
-                mAudioDispatcher.addAudioProcessor(new WriterProcessor(mAudioDispatcher.getFormat(), new RandomAccessFile(recordPath, "rw")));
-            } catch (FileNotFoundException e) {
-                Timber.e("Can't record to temporary .wav file");
-                e.printStackTrace();
-            }
-            mAudioDispatcher.addAudioProcessor(new StopAudioProcessor(duration_sec));
-        } else {
-            if (soundPath.equals("@play@")) {
-                /* play.mp3: playback microphone recording from file "record.wav" */
+        if  (soundPath.equals("@stop@")) {
+            if ((mAudioDispatcher != null) && !mAudioDispatcher.isStopped())
                 mAudioDispatcher.stop();
-                duration_sec = soundDuration(recordPath);
-                mAudioDispatcher = AudioDispatcherFactory.fromPipe(recordPath, 22050, 1024, 0);
-                mAudioDispatcher.addAudioProcessor(new AndroidAudioPlayer(mAudioDispatcher.getFormat(), AudioTrack.getMinBufferSize(22050, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), AudioManager.STREAM_MUSIC));
+            return;
+        } else {
+            if (soundPath.equals("@rec@")) {
+            /* rec.mp3: record from microphone to file "record.wav" */
+                if ((mAudioDispatcher != null) && !mAudioDispatcher.isStopped())
+                    mAudioDispatcher.stop();
+                mAudioDispatcher = AudioDispatcherFactory.fromDefaultMicrophone(22050, 1024, 0);
+            /* mAudioDispatcher.addAudioProcessor(new SilenceDetector()); */
+                try {
+                    mAudioDispatcher.addAudioProcessor(new WriterProcessor(mAudioDispatcher.getFormat(), new RandomAccessFile(recordPath, "rw")));
+                } catch (FileNotFoundException e) {
+                    Timber.e("Can't record to temporary .wav file");
+                    e.printStackTrace();
+                }
+                mAudioDispatcher.addAudioProcessor(new StopAudioProcessor(duration_sec));
             } else {
-                playPath = new String(soundPath);
+                if (soundPath.equals("@play@")) {
+                /* play.mp3: playback microphone recording from file "record.wav" */
+                    if ((mAudioDispatcher != null) && !mAudioDispatcher.isStopped())
+                        mAudioDispatcher.stop();
+                    mAudioDispatcher = AudioDispatcherFactory.fromPipe(recordPath, 22050, 1024, 0);
+                    mAudioDispatcher.addAudioProcessor(new AndroidAudioPlayer(mAudioDispatcher.getFormat(), AudioTrack.getMinBufferSize(22050, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), AudioManager.STREAM_MUSIC));
+                } else {
+                    playPath = new String(soundPath);
                 /* default: play audio file soundPath */
-                duration_sec = soundDuration(soundPath); /* duration of mp3 determines horizontal axis */
-                mAudioDispatcher = AudioDispatcherFactory.fromPipe(soundPath, 22050, 1024, 0);
-                mAudioDispatcher.addAudioProcessor(new AndroidAudioPlayer(mAudioDispatcher.getFormat(), AudioTrack.getMinBufferSize(22050, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), AudioManager.STREAM_MUSIC));
+                    mAudioDispatcher = AudioDispatcherFactory.fromPipe(soundPath, 22050, 1024, 0);
+                    mAudioDispatcher.addAudioProcessor(new AndroidAudioPlayer(mAudioDispatcher.getFormat(), AudioTrack.getMinBufferSize(22050, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), AudioManager.STREAM_MUSIC));
+                }
             }
         }
-
         final boolean isAnswer = (soundPath.equals("@rec@") || soundPath.equals("@play@"));
         int graph_number;
 
@@ -132,7 +130,7 @@ public class Pitch {
             graph_number = 0;
         }
 
-        ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_start(" + graph_number + ", " + duration_sec + ")");
+        ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_start(" + graph_number + ")");
 
         mAudioDispatcher.addAudioProcessor(new PitchProcessor(PitchEstimationAlgorithm.FFT_YIN, 22050, 1024, new PitchDetectionHandler() {
                 @Override
@@ -156,9 +154,6 @@ public class Pitch {
         ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_stop()");
     }
 
-    public void pitchScore () {
-
-    }
 }
 
 // not truncated
