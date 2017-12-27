@@ -17,9 +17,11 @@
 
 package com.ichi2.libanki;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaMetadataRetriever;
@@ -28,6 +30,8 @@ import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.MediaStore;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 
 import android.view.Display;
 import android.view.WindowManager;
@@ -67,6 +71,7 @@ public class Sound {
     private static Pitch mPitch = new Pitch();
     private static boolean usePitch = false;
     public static Pattern sPitchPattern = Pattern.compile("\\[pitch\\]");
+    private static final int REQUEST_AUDIO_PERMISSION = 0;
 
     /**
      * Pattern used to parse URI (according to http://tools.ietf.org/html/rfc3986#page-50)
@@ -203,6 +208,7 @@ public class Sound {
     public static String expandSounds(String soundDir, String content) {
         content = expandPitch(new String(content));
 
+        /* erase recording of previous card */
         if (mPitch != null) {
             mPitch.erase();
         }
@@ -376,6 +382,8 @@ public class Sound {
             // Pitch detection
             try {
                 if ((usePitch) && (mPitch != null)) {
+                    checkAudioPermission();
+
                     mPitch.playSound(soundPath);
                     return;
                 }
@@ -556,5 +564,22 @@ public class Sound {
     }
     public boolean hasAnswer() {
         return mSoundPaths.containsKey(Sound.SOUNDS_ANSWER);
+    }
+    
+    // Request permission to record from microphone
+    private void checkAudioPermission() {
+        if (ContextCompat.checkSelfPermission(AnkiDroidApp.getInstance().getApplicationContext(), Manifest.permission.RECORD_AUDIO) !=
+                PackageManager.PERMISSION_GRANTED) {
+            if (mCallingActivity != null && mCallingActivity.get() != null)
+            ActivityCompat.requestPermissions(mCallingActivity.get(), new String[]{Manifest.permission.RECORD_AUDIO},
+                    REQUEST_AUDIO_PERMISSION);
+        }
+        return;
+    }
+
+    public void onRequestPermissionsResult (int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == REQUEST_AUDIO_PERMISSION && permissions.length == 1) {
+            Timber.d("RECORD_AUDIO permission granted");
+        }
     }
 }
