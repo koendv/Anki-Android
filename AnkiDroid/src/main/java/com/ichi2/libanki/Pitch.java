@@ -36,7 +36,6 @@ import be.tarsos.dsp.writer.WriterProcessor;
 
 import com.ichi2.anki.AbstractFlashcardViewer;
 import com.ichi2.anki.AnkiDroidApp;
-import com.ichi2.libanki.PitchScore;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -49,8 +48,8 @@ import timber.log.Timber;
 /**
  * Created by koen on 12/7/17.
  * XXX Todo: add Karaoke mode.
- * Check permissions
- * Fix sample rate
+ * Check permissions: need RECORD_AUDIO.
+ * XXX Fix sample rate. On some phones the 'universal' sample rate of 22050 does not work.
  */
 
 public class Pitch {
@@ -60,6 +59,7 @@ public class Pitch {
     private PitchProcessor mPitchProcessor = null;
     private String recordPath;
     private String playPath;
+    private boolean recorded = false;
 
     private static WeakReference<Context> mReviewer;
 
@@ -93,10 +93,11 @@ public class Pitch {
             if (soundPath.equals("@rec@")) {
                 /* record microphone to file 'record.wav' */
                 record();
+                recorded = true;
             } else {
                 if (soundPath.equals("@play@")) {
                     /* playback microphone recording from file "record.wav" */
-                    play(recordPath, 1); 
+                    if (recorded) play(recordPath, 1); /* if not recorded do not playback */
                 } else {
                     /* default: play audio file soundPath */
                     play(soundPath, 0); 
@@ -104,6 +105,12 @@ public class Pitch {
             }
         }
 
+        return;
+    }
+
+    /* 'erase' recording */
+    public void erase () {
+        recorded = false;
         return;
     }
 

@@ -64,7 +64,7 @@ public class Sound {
      *  Pitch detection
      */
 
-    private Pitch mPitch = new Pitch();
+    private static Pitch mPitch = new Pitch();
     private static boolean usePitch = false;
     public static Pattern sPitchPattern = Pattern.compile("\\[pitch\\]");
 
@@ -202,6 +202,10 @@ public class Sound {
      */
     public static String expandSounds(String soundDir, String content) {
         content = expandPitch(new String(content));
+
+        if (mPitch != null) {
+            mPitch.erase();
+        }
 
         StringBuilder stringBuilder = new StringBuilder();
         String contentLeft = content;
