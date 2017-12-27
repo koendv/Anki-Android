@@ -49,6 +49,8 @@ import timber.log.Timber;
 /**
  * Created by koen on 12/7/17.
  * XXX Todo: add Karaoke mode.
+ * Check permissions
+ * Fix sample rate
  */
 
 public class Pitch {
@@ -62,10 +64,11 @@ public class Pitch {
     private static WeakReference<Context> mReviewer;
 
     public Pitch() {
+        /* find ffmpeg binaries */
         new AndroidFFMPEGLocator(AnkiDroidApp.getInstance().getApplicationContext());
 
+        /* build temp filename for recordings */
         File recordDir = AnkiDroidApp.getInstance().getApplicationContext().getCacheDir();
-
         File recordFile = null;
         try {
             recordFile = File.createTempFile("record", ".wav", recordDir);
@@ -84,76 +87,79 @@ public class Pitch {
 
     public void playSound(String soundPath) {
 
-        Timber.i("recordPath" + recordPath); // XXX
-
-        double duration_sec = 3; // XXX Default for recorded speech
-
         if  (soundPath.equals("@stop@")) {
-            if ((mAudioDispatcher != null) && !mAudioDispatcher.isStopped())
-                mAudioDispatcher.stop();
-            return;
+            stop();
         } else {
             if (soundPath.equals("@rec@")) {
-            /* rec.mp3: record from microphone to file "record.wav" */
-                if ((mAudioDispatcher != null) && !mAudioDispatcher.isStopped())
-                    mAudioDispatcher.stop();
-                mAudioDispatcher = AudioDispatcherFactory.fromDefaultMicrophone(22050, 1024, 0);
-            /* mAudioDispatcher.addAudioProcessor(new SilenceDetector()); */
-                try {
-                    mAudioDispatcher.addAudioProcessor(new WriterProcessor(mAudioDispatcher.getFormat(), new RandomAccessFile(recordPath, "rw")));
-                } catch (FileNotFoundException e) {
-                    Timber.e("Can't record to temporary .wav file");
-                    e.printStackTrace();
-                }
-                mAudioDispatcher.addAudioProcessor(new StopAudioProcessor(duration_sec));
+                /* record microphone to file 'record.wav' */
+                record();
             } else {
                 if (soundPath.equals("@play@")) {
-                /* play.mp3: playback microphone recording from file "record.wav" */
-                    if ((mAudioDispatcher != null) && !mAudioDispatcher.isStopped())
-                        mAudioDispatcher.stop();
-                    mAudioDispatcher = AudioDispatcherFactory.fromPipe(recordPath, 22050, 1024, 0);
-                    mAudioDispatcher.addAudioProcessor(new AndroidAudioPlayer(mAudioDispatcher.getFormat(), AudioTrack.getMinBufferSize(22050, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), AudioManager.STREAM_MUSIC));
+                    /* playback microphone recording from file "record.wav" */
+                    play(recordPath, 1); 
                 } else {
-                    playPath = new String(soundPath);
-                /* default: play audio file soundPath */
-                    mAudioDispatcher = AudioDispatcherFactory.fromPipe(soundPath, 22050, 1024, 0);
-                    mAudioDispatcher.addAudioProcessor(new AndroidAudioPlayer(mAudioDispatcher.getFormat(), AudioTrack.getMinBufferSize(22050, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), AudioManager.STREAM_MUSIC));
+                    /* default: play audio file soundPath */
+                    play(soundPath, 0); 
                 }
             }
         }
-        final boolean isAnswer = (soundPath.equals("@rec@") || soundPath.equals("@play@"));
-        int graph_number;
-
-        if (isAnswer) {
-            graph_number = 1;
-        } else {
-            graph_number = 0;
-        }
-
-        ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_start(" + graph_number + ")");
-
-        mAudioDispatcher.addAudioProcessor(new PitchProcessor(PitchEstimationAlgorithm.FFT_YIN, 22050, 1024, new PitchDetectionHandler() {
-                @Override
-                public void handlePitch(PitchDetectionResult pitchDetectionResult, AudioEvent audioEvent) {
-                    final float pitchInHz = pitchDetectionResult.getPitch();
-                    final float secondsProcessed = mAudioDispatcher.secondsProcessed();
-
-                    /* Timber.i("pitch: " + pitchInHz); */
-                    ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_add(" + secondsProcessed + ", " + pitchInHz + ")");
-                }
-            }));
-        new Thread(mAudioDispatcher, "Audio Dispatcher").start();
 
         return;
     }
 
-    public void stopSound () {
-        if (mAudioDispatcher != null) {
+    /* stop recording and playback */
+    public void stop () {
+        if ((mAudioDispatcher != null) && !mAudioDispatcher.isStopped())
             mAudioDispatcher.stop();
-        }
-        ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_stop()");
+        return;
     }
 
+    /* play mp3/wav file 'soundPath' and draw pitch in graph 'graphNumber' */
+    public void play (String soundPath, int graphNumber) {
+        stop();
+        mAudioDispatcher = AudioDispatcherFactory.fromPipe(soundPath, 22050, 1024, 0);
+        mAudioDispatcher.addAudioProcessor(new AndroidAudioPlayer(mAudioDispatcher.getFormat(), AudioTrack.getMinBufferSize(22050, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), AudioManager.STREAM_MUSIC));
+        drawPitch(graphNumber);
+        return;
+    }
+
+    /* record from microphone to file 'record.wav' and draw pitch in graph no. 1 */
+    public void record () {
+        double duration_sec = 3; // XXX Default length for recorded speech
+
+        stop();
+        mAudioDispatcher = AudioDispatcherFactory.fromDefaultMicrophone(22050, 1024, 0);
+        try {
+            mAudioDispatcher.addAudioProcessor(new WriterProcessor(mAudioDispatcher.getFormat(), new RandomAccessFile(recordPath, "rw")));
+        } catch (FileNotFoundException e) {
+            Timber.e("Can't record to temporary .wav file");
+            e.printStackTrace();
+        }
+        mAudioDispatcher.addAudioProcessor(new StopAudioProcessor(duration_sec));
+        drawPitch(1);
+        return;
+    }
+
+    /* draw pitch graph */
+    private void drawPitch(int graphNumber) {
+
+        /* the graph is drawn by sending javascript to the webview. See pitch.js */
+        ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_start(" + graphNumber + ")");
+
+        mAudioDispatcher.addAudioProcessor(new PitchProcessor(PitchEstimationAlgorithm.FFT_YIN, 22050, 1024, new PitchDetectionHandler() {
+            @Override
+            public void handlePitch(PitchDetectionResult pitchDetectionResult, AudioEvent audioEvent) {
+                final float pitchInHz = pitchDetectionResult.getPitch();
+                final float secondsProcessed = mAudioDispatcher.secondsProcessed();
+
+                /* add data point (secondsProcessed, pitchInHz) to graph */
+                ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_add(" + secondsProcessed + ", " + pitchInHz + ")");
+                }
+            }));
+        new Thread(mAudioDispatcher, "Audio Dispatcher").start();
+        return;
+    }
+        
 }
 
 // not truncated

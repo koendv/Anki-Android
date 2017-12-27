@@ -63,11 +63,4 @@ function graph_add(x, y) {
     graph_draw();
 }
 
-/* 
- * End drawing the graph. Postprocessing, if needed.
- */
-
-function graph_stop() {
-}
-
 /* not truncated */

@@ -377,7 +377,7 @@ public class Sound {
                 }
             } catch (Exception e) {
                 Timber.e(e, "playSounds - Error detecting pitch %s", soundPath);
-                mPitch.stopSound();
+                mPitch.stop();
             }
 
             // Play media
@@ -496,7 +496,7 @@ public class Sound {
             mAudioManager = null;
         }
         if (mPitch != null) {
-            mPitch.stopSound();
+            mPitch.stop();
         }
     }
 
@@ -510,7 +510,7 @@ public class Sound {
         }
         ReadText.stopTts();
         if (mPitch != null) {
-            mPitch.stopSound();
+            mPitch.stop();
         }
     }
 
