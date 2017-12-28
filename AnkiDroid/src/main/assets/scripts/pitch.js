@@ -6,7 +6,8 @@ var
     container = document.getElementById('pitch0'),
     data = [],
     graph_number = 0,
-    graph; 
+    graph,
+    y_min = null; 
 
 (function () {
     container = document.getElementById('pitch1');
@@ -25,7 +26,7 @@ function graph_draw() {
 
     graph = Flotr.draw(container, [ data ], {
         xaxis: { showLabels: false },
-        yaxis: { showLabels: false, scaling: 'logarithmic' },
+        yaxis: { min: y_min, showLabels: false, scaling: 'logarithmic' },
         lines: { show: true, fill: true},
         grid:  { horizontalLines: false, minorHorizontalLines: false, verticalLines: false, minorVerticalLines: false, outline: ''}
     });
@@ -34,10 +35,13 @@ function graph_draw() {
 /*
  * begin drawing graph. 
  * g is 0 or 1, depending upon whether we are drawing the tones of the question or the answer.
+ * y0 is the lowest expected frequency
  */
 
-function graph_start(g) {
+function graph_start(g, y0) {
     graph_number = g;
+    y_min = null;
+    if (y0 > 0) y_min = y0;
     data = [];
     graph_draw();
 }
@@ -57,6 +61,9 @@ function graph_add(x, y) {
 
     /* if tones is higher than 700, assume glitch. */
     if (y > 700) return;
+
+    /* lowest frequency */
+    if ((y != null) && (y < y_min)) y_min = y;
 
     /* add data pair */
     data.push([x, y]);

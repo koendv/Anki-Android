@@ -48,7 +48,6 @@ import timber.log.Timber;
 /**
  * Created by koen on 12/7/17.
  * XXX Todo: add Karaoke mode.
- * Check permissions: need RECORD_AUDIO.
  * XXX Fix sample rate. On some phones the 'universal' sample rate of 22050 does not work.
  */
 
@@ -58,10 +57,11 @@ public class Pitch {
     private AndroidAudioPlayer mAndroidAudioPlayer = null;
     private PitchProcessor mPitchProcessor = null;
     private String recordPath;
-    private String playPath;
     private boolean recorded = false;
 
     private static WeakReference<Context> mReviewer;
+
+    private MinPitch minPitch = new MinPitch(); /* lowest pitch (frequency) to be expected */
 
     public Pitch() {
         /* find ffmpeg binaries */
@@ -150,14 +150,19 @@ public class Pitch {
     /* draw pitch graph */
     private void drawPitch(int graphNumber) {
 
+        minPitch.newseries(graphNumber); /* adjust graph baseline */
+
         /* the graph is drawn by sending javascript to the webview. See pitch.js */
-        ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_start(" + graphNumber + ")");
+        ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_start(" + graphNumber + "," + minPitch.min(graphNumber) + ")");
 
         mAudioDispatcher.addAudioProcessor(new PitchProcessor(PitchEstimationAlgorithm.FFT_YIN, 22050, 1024, new PitchDetectionHandler() {
             @Override
             public void handlePitch(PitchDetectionResult pitchDetectionResult, AudioEvent audioEvent) {
                 final float pitchInHz = pitchDetectionResult.getPitch();
                 final float secondsProcessed = mAudioDispatcher.secondsProcessed();
+
+                /* running minimum */
+                minPitch.data(pitchInHz);
 
                 /* add data point (secondsProcessed, pitchInHz) to graph */
                 ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_add(" + secondsProcessed + ", " + pitchInHz + ")");
@@ -166,7 +171,40 @@ public class Pitch {
         new Thread(mAudioDispatcher, "Audio Dispatcher").start();
         return;
     }
-        
+
+    /*
+     * Calculates the lowest expected frequency of a graph. Used to position the '0' of the y axis.
+     * "Put the origin of the y-axis at the lowest point of the fourth tone."
+     */
+
+    class MinPitch {
+        private int current_graph = 0;
+        private double[] y_min = {-1.0, -1.0}; /* all-time minimum + low-pass */
+        private double running_min = -1.0; /* minimum of current graph */
+
+        public void data(double y) {
+            if (y == -1.0) return;
+            if ((running_min == -1.0) || (running_min > y)) running_min = y;
+            return;
+        }
+
+        public void newseries(int new_graph) {
+            if (running_min != -1.0) {
+                final double tau = 0.1;
+                if (y_min[current_graph] == -1.0) y_min[current_graph] = running_min; /* first data point */
+                else y_min[current_graph] = tau * running_min + (1.0 - tau) * y_min[current_graph]; /* low-pass filter */
+                Timber.d("y_min[0]: " + y_min[0] + " y_min[1]: " + y_min[1] + " running_min: " + running_min);
+                running_min = -1.0; /* reset running minimum */
+            }
+            current_graph = new_graph;
+        }
+
+        public double min (int graph) {
+            return y_min[graph];
+        }
+    }
+
+
 }
 
 // not truncated
