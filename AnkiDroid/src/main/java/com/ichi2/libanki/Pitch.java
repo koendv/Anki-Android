@@ -61,7 +61,7 @@ public class Pitch {
 
     private static WeakReference<Context> mReviewer;
 
-    private MinPitch minPitch = new MinPitch(); /* lowest pitch (frequency) to be expected */
+    private MinMaxPitch minMaxPitch = new MinMaxPitch(); /* lowest pitch (frequency) to be expected */
 
     public Pitch() {
         /* find ffmpeg binaries */
@@ -150,10 +150,10 @@ public class Pitch {
     /* draw pitch graph */
     private void drawPitch(int graphNumber) {
 
-        minPitch.newseries(graphNumber); /* adjust graph baseline */
+        minMaxPitch.newseries(graphNumber); /* adjust graph baseline */
 
         /* the graph is drawn by sending javascript to the webview. See pitch.js */
-        ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_start(" + graphNumber + "," + minPitch.min(graphNumber) + ")");
+        ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_start(" + graphNumber + "," + minMaxPitch.min(graphNumber) + ")");
 
         mAudioDispatcher.addAudioProcessor(new PitchProcessor(PitchEstimationAlgorithm.FFT_YIN, 22050, 1024, new PitchDetectionHandler() {
             @Override
@@ -162,7 +162,7 @@ public class Pitch {
                 final float secondsProcessed = mAudioDispatcher.secondsProcessed();
 
                 /* running minimum */
-                minPitch.data(pitchInHz);
+                minMaxPitch.data(pitchInHz);
 
                 /* add data point (secondsProcessed, pitchInHz) to graph */
                 ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_add(" + secondsProcessed + ", " + pitchInHz + ")");
@@ -178,30 +178,45 @@ public class Pitch {
      * "Put the origin of the y-axis at the lowest point of the fourth tone."
      */
 
-    class MinPitch {
+    class MinMaxPitch {
         private int current_graph = 0;
         private double[] y_min = {-1.0, -1.0}; /* all-time minimum + low-pass */
+        private double[] y_max= {-1.0, -1.0}; /* all-time maximum + low-pass */
         private double running_min = -1.0; /* minimum of current graph */
+        private double running_max = -1.0; /* maximum of current graph */
 
         public void data(double y) {
             if (y == -1.0) return;
             if ((running_min == -1.0) || (running_min > y)) running_min = y;
+            if ((running_max == -1.0) || (running_max < y)) running_max = y;
             return;
         }
 
         public void newseries(int new_graph) {
+            final double tau = 0.1;
+
             if (running_min != -1.0) {
-                final double tau = 0.1;
                 if (y_min[current_graph] == -1.0) y_min[current_graph] = running_min; /* first data point */
                 else y_min[current_graph] = tau * running_min + (1.0 - tau) * y_min[current_graph]; /* low-pass filter */
-                Timber.d("y_min[0]: " + y_min[0] + " y_min[1]: " + y_min[1] + " running_min: " + running_min);
-                running_min = -1.0; /* reset running minimum */
             }
+
+            if (running_max != -1.0) {
+                if (y_max[current_graph] == -1.0) y_max[current_graph] = running_max; /* first data point */
+                else y_max[current_graph] = tau * running_max + (1.0 - tau) * y_max[current_graph]; /* low-pass filter */
+            }
+
+            Timber.d(String.format("y_min[0]: %6.1f y_max[0]: %6.1f y_min[1]: %6.1f y_max[1]: %6.1f run_max: %6.1f run_min: %6.1f", y_min[0], y_max[0], y_min[1], y_max[1], running_max, running_min));
+            running_min = -1.0; /* reset running minimum */
+            running_max = -1.0; /* reset running minimum */
             current_graph = new_graph;
         }
 
         public double min (int graph) {
             return y_min[graph];
+        }
+
+        public double max (int graph) {
+            return y_max[graph];
         }
     }
 
