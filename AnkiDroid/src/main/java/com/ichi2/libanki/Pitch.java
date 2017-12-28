@@ -207,7 +207,7 @@ public class Pitch {
 
             Timber.d(String.format("y_min[0]: %6.1f y_max[0]: %6.1f y_min[1]: %6.1f y_max[1]: %6.1f run_max: %6.1f run_min: %6.1f", y_min[0], y_max[0], y_min[1], y_max[1], running_max, running_min));
             running_min = -1.0; /* reset running minimum */
-            running_max = -1.0; /* reset running minimum */
+            running_max = -1.0; /* reset running maximum */
             current_graph = new_graph;
         }
 
