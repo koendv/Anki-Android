@@ -174,6 +174,7 @@ public class Pitch {
 
     /*
      * Calculates the lowest expected frequency of a graph. Used to position the '0' of the y axis.
+     * Keep two different 'lowest expected frequencies", one for question and one for answer.
      * "Put the origin of the y-axis at the lowest point of the fourth tone."
      */
 
