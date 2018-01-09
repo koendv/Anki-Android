@@ -59,6 +59,8 @@ public class Pitch {
     private String recordPath;
     private boolean recorded = false;
 
+    private double mLastPitchTimeStamp = 0; // time of last detected pitch, in seconds. -1 if no pitch detected yet.
+
     private static WeakReference<Context> mReviewer;
 
     private MinMaxPitch minMaxPitch = new MinMaxPitch(); /* lowest pitch (frequency) to be expected */
@@ -126,7 +128,7 @@ public class Pitch {
         stop();
         mAudioDispatcher = AudioDispatcherFactory.fromPipe(soundPath, 22050, 1024, 0);
         mAudioDispatcher.addAudioProcessor(new AndroidAudioPlayer(mAudioDispatcher.getFormat(), AudioTrack.getMinBufferSize(22050, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), AudioManager.STREAM_MUSIC));
-        drawPitch(graphNumber);
+        drawPitch(graphNumber, false);
         return;
     }
 
@@ -143,14 +145,15 @@ public class Pitch {
             e.printStackTrace();
         }
         mAudioDispatcher.addAudioProcessor(new StopAudioProcessor(duration_sec));
-        drawPitch(1);
+        drawPitch(1, true);
         return;
     }
 
     /* draw pitch graph */
-    private void drawPitch(int graphNumber) {
+    private void drawPitch(int graphNumber, final boolean recordingFromMicrophone) {
 
         minMaxPitch.newseries(graphNumber); /* adjust graph baseline */
+        mLastPitchTimeStamp = -1;
 
         /* the graph is drawn by sending javascript to the webview. See pitch.js */
         ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_start(" + graphNumber + "," + minMaxPitch.min(graphNumber) + ")");
@@ -166,8 +169,18 @@ public class Pitch {
 
                 /* add data point (secondsProcessed, pitchInHz) to graph */
                 ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_add(" + secondsProcessed + ", " + pitchInHz + ")");
+
+                /* end recording if 0.5 seconds of "silence" */
+                if (pitchInHz != -1) {
+                    /* pitch detected, update timestamp */
+                    mLastPitchTimeStamp = secondsProcessed;
                 }
-            }));
+                else {
+                    /* end recording if 0.5 seconds without detecting pitch */
+                    if (recordingFromMicrophone && (mLastPitchTimeStamp > 0) && ((secondsProcessed - mLastPitchTimeStamp) > 0.5)) mAudioDispatcher.stop();
+                }
+            }
+        }));
         new Thread(mAudioDispatcher, "Audio Dispatcher").start();
         return;
     }
