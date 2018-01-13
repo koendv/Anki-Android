@@ -58,7 +58,7 @@ public class Pitch {
     private PitchProcessor mPitchProcessor = null;
     private String recordPath;
     private boolean recorded = false;
-
+    private SampleRates sampleRates = new SampleRates();
     private double mLastPitchTimeStamp = 0; // time of last detected pitch, in seconds. -1 if no pitch detected yet.
 
     private static WeakReference<Context> mReviewer;
@@ -126,8 +126,8 @@ public class Pitch {
     /* play mp3/wav file 'soundPath' and draw pitch in graph 'graphNumber' */
     public void play (String soundPath, int graphNumber) {
         stop();
-        mAudioDispatcher = AudioDispatcherFactory.fromPipe(soundPath, 22050, 1024, 0);
-        mAudioDispatcher.addAudioProcessor(new AndroidAudioPlayer(mAudioDispatcher.getFormat(), AudioTrack.getMinBufferSize(22050, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), AudioManager.STREAM_MUSIC));
+        mAudioDispatcher = AudioDispatcherFactory.fromPipe(soundPath, sampleRates.TrackSampleRate(), sampleRates.TrackBufferSizeInSamples(), 0);
+        mAudioDispatcher.addAudioProcessor(new AndroidAudioPlayer(mAudioDispatcher.getFormat(), sampleRates.TrackBufferSizeInSamples(), AudioManager.STREAM_MUSIC));
         drawPitch(graphNumber, false);
         return;
     }
@@ -135,9 +135,8 @@ public class Pitch {
     /* record from microphone to file 'record.wav' and draw pitch in graph no. 1 */
     public void record () {
         double duration_sec = 3; // XXX Default length for recorded speech
-
         stop();
-        mAudioDispatcher = AudioDispatcherFactory.fromDefaultMicrophone(22050, 1024, 0);
+        mAudioDispatcher = AudioDispatcherFactory.fromDefaultMicrophone(sampleRates.RecordSampleRate(), sampleRates.RecordBufferSizeInSamples(), 0);
         try {
             mAudioDispatcher.addAudioProcessor(new WriterProcessor(mAudioDispatcher.getFormat(), new RandomAccessFile(recordPath, "rw")));
         } catch (FileNotFoundException e) {
@@ -155,10 +154,29 @@ public class Pitch {
         minMaxPitch.newseries(graphNumber); /* adjust graph baseline */
         mLastPitchTimeStamp = -1;
 
+        int sampleRate;
+        int bufferSize;
+        if (recordingFromMicrophone) {
+            sampleRate = sampleRates.RecordSampleRate();
+            bufferSize = sampleRates.RecordBufferSizeInSamples();
+        }
+        else {
+            sampleRate = sampleRates.TrackSampleRate();
+            bufferSize = sampleRates.TrackBufferSizeInSamples();
+        }
+
+        /* calculate about 24 to 48 pitch values per second */
+        int FFTSize = 512;
+        while (24 * FFTSize < sampleRate) {
+            FFTSize = FFTSize * 2;
+        }
+        Timber.d("FFT buffersize: " + FFTSize);
+        mAudioDispatcher.setStepSizeAndOverlap(FFTSize, FFTSize/2);
+
         /* the graph is drawn by sending javascript to the webview. See pitch.js */
         ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_start(" + graphNumber + "," + minMaxPitch.min(graphNumber) + ")");
 
-        mAudioDispatcher.addAudioProcessor(new PitchProcessor(PitchEstimationAlgorithm.FFT_YIN, 22050, 1024, new PitchDetectionHandler() {
+        mAudioDispatcher.addAudioProcessor(new PitchProcessor(PitchEstimationAlgorithm.FFT_YIN, sampleRate, FFTSize, new PitchDetectionHandler() {
             @Override
             public void handlePitch(PitchDetectionResult pitchDetectionResult, AudioEvent audioEvent) {
                 final float pitchInHz = pitchDetectionResult.getPitch();
