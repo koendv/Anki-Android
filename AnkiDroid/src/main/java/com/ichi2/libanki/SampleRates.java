@@ -50,7 +50,7 @@ public class SampleRates {
             Timber.i("AudioTrack: trying sample rate: " + sample_rate + " buffer size in bytes: " + buffer_size + " minimum buffer size in bytes: " + minBufferSizeInBytes);
             if (minBufferSizeInBytes < 0) return false;
             if (buffer_size < minBufferSizeInBytes) return false;
-            track = new AudioTrack(AudioAttributes.CONTENT_TYPE_MUSIC, sample_rate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, buffer_size, AudioTrack.MODE_STREAM);
+            track = new AudioTrack(AudioManager.STREAM_MUSIC, sample_rate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, buffer_size, AudioTrack.MODE_STREAM);
             if (track.getState() == track.STATE_UNINITIALIZED) return false;
         } catch(IllegalArgumentException e) {
             return false; // cannot sample at this rate
@@ -74,6 +74,8 @@ public class SampleRates {
         AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         sample_rates[0] = Integer.parseInt(audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE));
         sample_rates[1] = AudioTrack.getNativeOutputSampleRate(AudioManager.STREAM_MUSIC);
+
+        sample_rates = new int[] {48000, 44100, 22050};
 
         /* trial and error */
         for(int sample_rate : sample_rates) {

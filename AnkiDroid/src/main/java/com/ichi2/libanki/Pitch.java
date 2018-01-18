@@ -171,7 +171,9 @@ public class Pitch {
             FFTSize = FFTSize * 2;
         }
         Timber.d("FFT buffersize: " + FFTSize);
-        mAudioDispatcher.setStepSizeAndOverlap(FFTSize, FFTSize/2);
+        if (FFTSize != bufferSize) {
+            mAudioDispatcher.setStepSizeAndOverlap(FFTSize, 0);
+        }
 
         /* the graph is drawn by sending javascript to the webview. See pitch.js */
         ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_start(" + graphNumber + "," + minMaxPitch.min(graphNumber) + ")");
