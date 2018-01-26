@@ -42,13 +42,19 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.ref.WeakReference;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.ListIterator;
+
+import org.json.JSONArray;
 
 import timber.log.Timber;
 
 /**
  * Created by koen on 12/7/17.
  * XXX Todo: add Karaoke mode.
- * XXX Fix sample rate. On some phones the 'universal' sample rate of 22050 does not work.
  */
 
 public class Pitch {
@@ -60,10 +66,9 @@ public class Pitch {
     private boolean recorded = false;
     private SampleRates sampleRates = new SampleRates();
     private double mLastPitchTimeStamp = 0; // time of last detected pitch, in seconds. -1 if no pitch detected yet.
+    private List<double[]> pitchData = new ArrayList<double[]>();
 
     private static WeakReference<Context> mReviewer;
-
-    private MinMaxPitch minMaxPitch = new MinMaxPitch(); /* lowest pitch (frequency) to be expected */
 
     public Pitch() {
         /* find ffmpeg binaries */
@@ -151,7 +156,6 @@ public class Pitch {
     /* draw pitch graph */
     private void drawPitch(int graphNumber, final boolean recordingFromMicrophone) {
 
-        minMaxPitch.newseries(graphNumber); /* adjust graph baseline */
         mLastPitchTimeStamp = -1;
 
         int sampleRate;
@@ -176,7 +180,9 @@ public class Pitch {
         }
 
         /* the graph is drawn by sending javascript to the webview. See pitch.js */
-        ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_start(" + graphNumber + "," + minMaxPitch.min(graphNumber) + ")");
+        pitchData = new ArrayList<double[]>();
+
+        final int graphNr = graphNumber;
 
         mAudioDispatcher.addAudioProcessor(new PitchProcessor(PitchEstimationAlgorithm.FFT_YIN, sampleRate, FFTSize, new PitchDetectionHandler() {
             @Override
@@ -184,11 +190,15 @@ public class Pitch {
                 final float pitchInHz = pitchDetectionResult.getPitch();
                 final float secondsProcessed = mAudioDispatcher.secondsProcessed();
 
-                /* running minimum */
-                minMaxPitch.data(pitchInHz);
+                /* add data point (secondsProcessed, pitchInHz) to data */
+                double[] dataPoint = {secondsProcessed, pitchInHz};
+                pitchData.add(dataPoint);
 
-                /* add data point (secondsProcessed, pitchInHz) to graph */
-                ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_add(" + secondsProcessed + ", " + pitchInHz + ")");
+                /* pass data on to javascript */
+                JSONArray jscript_data = new JSONArray(FilterPitch(pitchData));
+
+                /* draw graph */
+                ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_draw(" + graphNr + ", " + jscript_data.toString() + " )");
 
                 /* end recording if 0.5 seconds of "silence" */
                 if (pitchInHz != -1) {
@@ -206,54 +216,192 @@ public class Pitch {
     }
 
     /*
-     * Calculates the lowest expected frequency of a graph. Used to position the '0' of the y axis.
-     * Keep two different 'lowest expected frequencies", one for question and one for answer.
-     * "Put the origin of the y-axis at the lowest point of the fourth tone."
+     * Filter glitches in measured pitch.
+     *
+     * pitchArray is an ArrayList of [t, f] values, where t is time in seconds, and f is frequency in Hz.
+     * if f is -1 then no pitch was detected.
      */
 
-    class MinMaxPitch {
-        private int current_graph = 0;
-        private double[] y_min = {-1.0, -1.0}; /* all-time minimum + low-pass */
-        private double[] y_max= {-1.0, -1.0}; /* all-time maximum + low-pass */
-        private double running_min = -1.0; /* minimum of current graph */
-        private double running_max = -1.0; /* maximum of current graph */
 
-        public void data(double y) {
-            if (y == -1.0) return;
-            if ((running_min == -1.0) || (running_min > y)) running_min = y;
-            if ((running_max == -1.0) || (running_max < y)) running_max = y;
-            return;
+    private  List<double[]> FilterPitch( List<double[]> pitchArray) {
+        List<double[]> dta = pitchArray;
+        ListIterator<double[]> litr = null;
+
+        /* pass 1. check frequency range */
+        /*
+         * Chinese speech has a pitch range of less than an octave.
+         * If pitch range is more than an octave,
+         * remove max (or min) pitch sample if it's just a blip.
+         */
+
+        List<double[]> dta0 = new ArrayList<double[]>();
+
+        /* create sorted list of pitch values */
+        List<Double> freq = new ArrayList<Double>();
+        litr = dta.listIterator();
+        while (litr.hasNext()){
+            double point[] = litr.next();
+            double f = point[1];
+            if (f != -1)
+                freq.add(f);
         }
 
-        public void newseries(int new_graph) {
-            final double tau = 0.1;
+        Collections.sort(freq);
+        /* XXX  if only 1 or 2 points don't filter */
+        if (freq.size() <= 2)
+            return dta;
 
-            if (running_min != -1.0) {
-                if (y_min[current_graph] == -1.0) y_min[current_graph] = running_min; /* first data point */
-                else y_min[current_graph] = tau * running_min + (1.0 - tau) * y_min[current_graph]; /* low-pass filter */
+        /* determine cutoff points so maximum number of data points fits in an octave */
+        double
+                cutoff_low = freq.get(0),
+                cutoff_high = freq.get(freq.size()-1),
+                max_pitch_range = 3.0; /* theoretically 2 (an octave), but let's add a safety margin. */
+        int count = -1;
+
+        for (int i = 0; i < freq.size()-1; i++) {
+            double f_low = freq.get(i);
+            for (int j = freq.size()-1; j > i; --j) {
+                if (j - i + 1 < count)
+                    break;
+                double f_high = freq.get(j);
+                if (f_high < max_pitch_range * f_low) {
+                    if (j - i + 1 > count) {
+                        cutoff_low = f_low;
+                        cutoff_high = f_high;
+                        count = j - i + 1;
+                    }
+                    break;
+                }
+            }
+        }
+        /* Timber.d("cutoff " + cutoff_low + " Hz to " + cutoff_high + " Hz"); */
+
+        /* copy pitch values within range cutoff_low..cutoff_high (and silences) */
+        litr = dta.listIterator();
+        while (litr.hasNext()) {
+            double[] point = litr.next();
+            double pitch = point[1];
+            if ((pitch == -1) || ((pitch >= cutoff_low) && (pitch <= cutoff_high)))
+                dta0.add(point);
+            else
+                Timber.d("drop outlier " + point[0] + " s " + point[1] +" Hz");
+        }
+
+        /* pass 2. check pitch rise and fall time. */
+        List<double[]> dta1 = new ArrayList<double[]>();
+        litr = dta0.listIterator();
+        double[] pt_curr = new double[] {-1, -1};
+        double[] pt_next = litr.next();
+        boolean check_curr = true;
+        boolean check_next = true;
+
+        while (litr.hasNext()) {
+            pt_curr = pt_next;
+            pt_next = litr.next();
+            check_curr = check_next;
+            check_next = checkSlew(pt_curr, pt_next);
+
+            /* drop if transition to and from this freq was too fast */
+            if (!check_curr && !check_next) {
+                Timber.d("drop pitch rate " + pt_curr[0] + " s " + pt_curr[1] +" Hz");
+                continue;
             }
 
-            if (running_max != -1.0) {
-                if (y_max[current_graph] == -1.0) y_max[current_graph] = running_max; /* first data point */
-                else y_max[current_graph] = tau * running_max + (1.0 - tau) * y_max[current_graph]; /* low-pass filter */
-            }
+            /* valid data point */
+            dta1.add(pt_curr);
+        }
+        dta1.add(pt_next);
 
-            Timber.d(String.format("y_min[0]: %6.1f y_max[0]: %6.1f y_min[1]: %6.1f y_max[1]: %6.1f run_max: %6.1f run_min: %6.1f", y_min[0], y_max[0], y_min[1], y_max[1], running_max, running_min));
-            running_min = -1.0; /* reset running minimum */
-            running_max = -1.0; /* reset running maximum */
-            current_graph = new_graph;
+        /* pass 3. replace multiple frequency == -1 values (unknown freq.) by a single -1 value */
+        List<double[]> dta2 = new ArrayList<double[]>();
+        litr = dta1.listIterator();
+        while (litr.hasNext()) {
+            double[] point = litr.next();
+            if ((point[1] == -1) && (dta2.isEmpty() || (dta2.get(dta2.size() - 1)[1] == -1)))
+                continue;
+            dta2.add(point);
         }
 
-        public double min (int graph) {
-            return y_min[graph];
-        }
+        /* if last element has frequency -1 then remove last element */
+        if (!dta2.isEmpty() && (dta2.get(dta2.size() - 1)[1] == -1))
+            dta2.remove(dta2.size() - 1);
 
-        public double max (int graph) {
-            return y_max[graph];
-        }
+        return dta2;
     }
 
+    /*
+     * check whether transition from p0 [t0, f0] to p1 [t1, f1] is within what a human voice can do.
+     */
 
+    private boolean checkSlew(double p0[], double p1[]){
+        final double safety_margin = 3;
+        double t0, t1, f0, f1;
+
+        /* make sure t0 < t1 */
+        if (p0[0] < p1[0]) {
+            t0 = p0[0];
+            t1 = p1[0];
+            f0 = p0[1];
+            f1 = p1[1];
+        }
+        else {
+            t0 = p1[0];
+            t1 = p0[0];
+            f0 = p1[1];
+            f1 = p0[1];
+        }
+
+        final double delta_t = t1 - t0;
+
+        /* f = -1 indicates no pitch detected */
+        if ((f0 <= 0) || (f1 <= 0))
+            return true;
+
+        if (f1 > f0) {
+            /* rising */
+            double rise_time = t_rise(f1, f0);
+            return (delta_t * safety_margin > rise_time);
+        } else if (f1 < f0) {
+            /* falling */
+            double fall_time = t_fall(f0, f1);
+            return (delta_t * safety_margin > fall_time);
+        }
+
+        return true;
+    }
+
+	/* 
+	 * Rise and fall time for pitch change,
+	 *  t_rise = 89.6 + 8.7 * d
+	 * where t_rise = rise time in milliseconds
+	 *  t_fall = 100.4 + 5.8 * d
+	 * where t_fall = fall time in milliseconds
+	 * with 
+	 *  d = 12 * ln(f/f0) / ln(2)
+	 * and f > f0.
+	 *
+	 * The pitch range for Chinese speech is less than an octave.
+	 *
+	 * The average length of a syllable is between 180 and 215 ms.
+	 *
+	 * Source: The Oxford Handbook of Chinese Linguistics, Ch. 36, p. 491.
+	 */
+
+    /*
+     * rise time in seconds for pitch change from frequency f0 to f
+     */
+
+    private double t_rise(double f, double f0) {
+        return 0.0896 + 0.1506 * Math.log(f/f0);
+    }
+
+    /*
+     * fall time in seconds for pitch change from frequency f to f0
+     */
+
+    private double t_fall(double f, double f0) {
+        return 0.1004 + 0.1004 * Math.log(f/f0);
+    }
 }
 
 // not truncated

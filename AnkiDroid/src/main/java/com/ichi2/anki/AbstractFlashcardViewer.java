@@ -2880,7 +2880,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
     public void runJavaScript(String js) {
         final String jScript = "javascript:" + js;
         if (mCard != null) {
-            Timber.i(jScript);
+            /* Timber.i(jScript); */
             /* need to call javascript from same thread as Webview */
             runOnUiThread(new Runnable() {
                 @Override
