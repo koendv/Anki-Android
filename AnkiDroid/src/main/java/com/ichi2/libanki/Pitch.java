@@ -14,6 +14,42 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
  ****************************************************************************************/
 
+	/*
+	 * Data about Chinese speech:
+	 *
+	 * * The average length of a syllable is between 180 and 215 ms.
+	 *
+	 * This means that to get 5 to 10 pitch samples per syllable
+	 * we need 24 to 48 pitch samples per second.
+	 * (FFTsize code)
+	 *
+	 * * The pitch range for Chinese speech is less than an octave.
+	 *
+	 * This allows us to filter outliers from the pitch values.
+	 * (FilterPitch pass1 code)
+	 *
+	 * Also, when drawing the graph of pitch values,
+	 * draw at least an octave from highest pitch down.
+	 * (pitch.js code)
+	 *
+	 * * Rise and fall time for pitch change,
+	 * *  t_rise = 89.6 + 8.7 * d
+	 * * where t_rise = rise time in milliseconds
+	 * *  t_fall = 100.4 + 5.8 * d
+	 * * where t_fall = fall time in milliseconds
+	 * * with
+	 * *  d = 12 * ln(f/f0) / ln(2)
+	 * * and f > f0.
+	 *
+	 * This allows us to filter glitches in the pitch values.
+	 * (FilterPitch pass2, t_rise, t_fall code)
+	 *
+	 * * Source: The Oxford Handbook of Chinese Linguistics,
+	 * * Ch. 36, "Intonation in Chinese", pp. 490-491,
+	 *
+	 */
+
+
 package com.ichi2.libanki;
 
 import android.content.Context;
@@ -253,14 +289,20 @@ public class Pitch {
 
         /* determine cutoff points so maximum number of data points fits in an octave */
         double
-                cutoff_low = freq.get(0),
-                cutoff_high = freq.get(freq.size()-1),
+                cutoff_low = -1,
+                cutoff_high = -1,
                 max_pitch_range = 3.0; /* theoretically 2 (an octave), but let's add a safety margin. */
         int count = -1;
 
-        for (int i = 0; i < freq.size()-1; i++) {
+        /* safe initial values */
+        if (!freq.isEmpty()){
+            cutoff_low = freq.get(0);
+            cutoff_high = freq.get(freq.size()-1);
+        }
+
+        for (int i = 0; i < freq.size(); i++) {
             double f_low = freq.get(i);
-            for (int j = freq.size()-1; j > i; --j) {
+            for (int j = freq.size()-1; j >= i; --j) {
                 if (j - i + 1 < count)
                     break;
                 double f_high = freq.get(j);
@@ -370,22 +412,7 @@ public class Pitch {
         return true;
     }
 
-	/* 
-	 * Rise and fall time for pitch change,
-	 *  t_rise = 89.6 + 8.7 * d
-	 * where t_rise = rise time in milliseconds
-	 *  t_fall = 100.4 + 5.8 * d
-	 * where t_fall = fall time in milliseconds
-	 * with 
-	 *  d = 12 * ln(f/f0) / ln(2)
-	 * and f > f0.
-	 *
-	 * The pitch range for Chinese speech is less than an octave.
-	 *
-	 * The average length of a syllable is between 180 and 215 ms.
-	 *
-	 * Source: The Oxford Handbook of Chinese Linguistics, Ch. 36, p. 491.
-	 */
+
 
     /*
      * rise time in seconds for pitch change from frequency f0 to f
