@@ -49,6 +49,13 @@
 	 *
 	 */
 
+	/*
+	 * XXX Todo: to run smoother on systems with slower cpu, take logarithm of
+	 * pitch frequency once, store logarithms in array, and do slew rate calculations
+	 * and draw pitch graph with stored logaritms only.
+	 * Todo: add karaoke mode?
+	 */
+
 
 package com.ichi2.libanki;
 
@@ -88,11 +95,6 @@ import org.json.JSONArray;
 
 import timber.log.Timber;
 
-/**
- * Created by koen on 12/7/17.
- * XXX Todo: add Karaoke mode.
- */
-
 public class Pitch {
 
     private AudioDispatcher mAudioDispatcher = null;
@@ -102,9 +104,17 @@ public class Pitch {
     private boolean recorded = false;
     private SampleRates sampleRates = new SampleRates();
     private double mLastPitchTimeStamp = 0; // time of last detected pitch, in seconds. -1 if no pitch detected yet.
-    private List<double[]> pitchData = new ArrayList<double[]>();
+    private List<double[]> pitchData = new ArrayList<double[]>(); /* arraylist of (time, frequency) pairs. */
 
     private static WeakReference<Context> mReviewer;
+
+    /*
+     * safety factor.
+     * Determines how hard pitch values are filtered for outliers and glitches.
+     * safety factor value is higher than 1. Suggested value 1.66.
+     * A value of 1 means hard filtering; a value of 4 in practice does not remove anything.
+     */
+    final private double safety_factor = 1.66; /* value between 1 (hard) and 4 (no) removing outliers/glitches */
 
     public Pitch() {
         /* find ffmpeg binaries */
@@ -283,15 +293,13 @@ public class Pitch {
         }
 
         Collections.sort(freq);
-        /* XXX  if only 1 or 2 points don't filter */
-        if (freq.size() <= 2)
-            return dta;
 
         /* determine cutoff points so maximum number of data points fits in an octave */
         double
                 cutoff_low = -1,
                 cutoff_high = -1,
-                max_pitch_range = 3.0; /* theoretically 2 (an octave), but let's add a safety margin. */
+                max_pitch_range = 2.0 * safety_factor; /* pitch range across the four tones in normal speech is  2 (an octave) */
+
         int count = -1;
 
         /* safe initial values */
@@ -341,7 +349,7 @@ public class Pitch {
             pt_curr = pt_next;
             pt_next = litr.next();
             check_curr = check_next;
-            check_next = checkSlew(pt_curr, pt_next);
+            check_next = checkSlewRate(pt_curr, pt_next);
 
             /* drop if transition to and from this freq was too fast */
             if (!check_curr && !check_next) {
@@ -375,8 +383,7 @@ public class Pitch {
      * check whether transition from p0 [t0, f0] to p1 [t1, f1] is within what a human voice can do.
      */
 
-    private boolean checkSlew(double p0[], double p1[]){
-        final double safety_margin = 3;
+    private boolean checkSlewRate(double p0[], double p1[]){
         double t0, t1, f0, f1;
 
         /* make sure t0 < t1 */
@@ -395,40 +402,26 @@ public class Pitch {
 
         final double delta_t = t1 - t0;
 
+        /*
+         * check frequency slew rate against t_rise and t_fall,
+         */
+
         /* f = -1 indicates no pitch detected */
         if ((f0 <= 0) || (f1 <= 0))
             return true;
-
-        if (f1 > f0) {
+        else if (f1 > f0) {
             /* rising */
-            double rise_time = t_rise(f1, f0);
-            return (delta_t * safety_margin > rise_time);
+            double rise_time = 0.1506 * Math.log(f1/f0);
+            return (delta_t * safety_factor > rise_time);
         } else if (f1 < f0) {
             /* falling */
-            double fall_time = t_fall(f0, f1);
-            return (delta_t * safety_margin > fall_time);
+            double fall_time = 0.1004 * Math.log(f0/f1);
+            return (delta_t * safety_factor > fall_time);
         }
 
         return true;
     }
 
-
-
-    /*
-     * rise time in seconds for pitch change from frequency f0 to f
-     */
-
-    private double t_rise(double f, double f0) {
-        return 0.0896 + 0.1506 * Math.log(f/f0);
-    }
-
-    /*
-     * fall time in seconds for pitch change from frequency f to f0
-     */
-
-    private double t_fall(double f, double f0) {
-        return 0.1004 + 0.1004 * Math.log(f/f0);
-    }
 }
 
 // not truncated
