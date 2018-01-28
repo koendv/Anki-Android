@@ -185,7 +185,7 @@ public class Pitch {
 
     /* record from microphone to file 'record.wav' and draw pitch in graph no. 1 */
     public void record () {
-        double duration_sec = 3; // XXX Default length for recorded speech
+        double duration_sec = 10; // XXX Max length for recorded speech
         stop();
         mAudioDispatcher = AudioDispatcherFactory.fromDefaultMicrophone(sampleRates.RecordSampleRate(), sampleRates.RecordBufferSizeInSamples(), 0);
         try {
