@@ -23,7 +23,7 @@ When you review the deck, your screen should be divided in two halves.
 
 The bottom half is the reference pronounciation and its tones. This half has a small black triangle. The black triangle is the 'Play' button. Touch it and you should see the tones being drawn as the sound is played.
 
-The top half is for your own speech. This half has a small red dot, a small black square and a small black triangle. The red dot is the 'Record' button; the black square is the 'Stop' recording button, and the black triangle is the 'Play' button. Touch the 'Record' button and say the word(s) on the flashcard out loud. You should see the tones being drawn as you speak. When you have finished speaking, push the 'Stop' button to stop recording. Hit the 'Play' button to listen to your voice.
+The top half is for your own speech. This half has a small red dot, a small black square and a small black triangle. The red dot is the 'Record' button; the black square is the 'Stop' recording button, and the black triangle is the 'Play' button. Touch the 'Record' button and say the word(s) on the flashcard out loud. You should see the tones being drawn as you speak. The recording ends when you stop speaking, or when you push the 'Stop' button. Hit the 'Play' button to listen to your voice.
 
 Adapting a deck for use with 'Anki with Tones'
 ----------------------------------------------
