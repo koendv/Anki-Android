@@ -1,69 +1,102 @@
-Only in TarsosDSP-master/: bin
-diff -cr ORIG/TarsosDSP-master/build/build.xml TarsosDSP-master/build/build.xml
-*** ORIG/TarsosDSP-master/build/build.xml	2017-10-24 07:57:51.000000000 -0400
---- TarsosDSP-master/build/build.xml	2017-12-08 08:13:38.811185114 -0500
-***************
-*** 8,14 ****
-  	
-  	<!-- If you want to build an Android TarsosDSP jar file, please download the Android SDK and 
-  	     Fix   -->
-! 	<property name="android_jar" value="/opt/Android/android-sdk-linux/platforms/android-22/android.jar" />
-  
-  	<!-- run the ant timestamp task -->
-  	<tstamp />
---- 8,14 ----
-  	
-  	<!-- If you want to build an Android TarsosDSP jar file, please download the Android SDK and 
-  	     Fix   -->
-! 	<property name="android_jar" value="/opt/android-sdk/platforms/android-22/android.jar" />
-  
-  	<!-- run the ant timestamp task -->
-  	<tstamp />
-Only in TarsosDSP-master/build: doant
-Only in TarsosDSP-master/build: docp
-Only in TarsosDSP-master/build: TarsosDSP-Android-2.4-bin.jar
-Only in TarsosDSP-master/build: TarsosDSP-Android-2.4.jar
-diff -cr ORIG/TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioInputStream.java TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioInputStream.java
-*** ORIG/TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioInputStream.java	2017-10-24 07:57:51.000000000 -0400
---- TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioInputStream.java	2017-12-17 03:18:36.663740281 -0500
-***************
-*** 50,56 ****
-  
-  	@Override
-  	public void close() throws IOException {
-! 		underlyingStream.stop();
-  		underlyingStream.release();
-  	}
-  
---- 50,58 ----
-  
-  	@Override
-  	public void close() throws IOException {
-!         if (underlyingStream.getState() != AudioRecord.STATE_UNINITIALIZED) {
-! 		    underlyingStream.stop();
-!         }
-  		underlyingStream.release();
-  	}
-  
-diff -cr ORIG/TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioPlayer.java TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioPlayer.java
-*** ORIG/TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioPlayer.java	2017-10-24 07:57:51.000000000 -0400
---- TarsosDSP-master/src/android/be/tarsos/dsp/io/android/AndroidAudioPlayer.java	2017-12-08 09:40:07.186903785 -0500
-***************
-*** 103,109 ****
-      @Override
-      public void processingFinished() {
-          audioTrack.flush();
-!         audioTrack.stop();
-          audioTrack.release();
-      }
-  }
---- 103,111 ----
-      @Override
-      public void processingFinished() {
-          audioTrack.flush();
-!         if (audioTrack.getState() != AudioTrack.STATE_UNINITIALIZED) {
-!             audioTrack.stop();
-!         }
-          audioTrack.release();
-      }
-  }
+diff --git a/build/build.xml b/build/build.xml
+index 2a9fc85..063186a 100644
+--- a/build/build.xml
++++ b/build/build.xml
+@@ -8,7 +8,7 @@
+ 	
+ 	<!-- If you want to build an Android TarsosDSP jar file, please download the Android SDK and 
+ 	     Fix   -->
+-	<property name="android_jar" value="/opt/Android/android-sdk-linux/platforms/android-22/android.jar" />
++	<property name="android_jar" value="/opt/android-sdk/platforms/android-22/android.jar" />
+ 
+ 	<!-- run the ant timestamp task -->
+ 	<tstamp />
+diff --git a/src/android/be/tarsos/dsp/io/android/AndroidAudioInputStream.java b/src/android/be/tarsos/dsp/io/android/AndroidAudioInputStream.java
+index 86f6067..78b99b2 100644
+--- a/src/android/be/tarsos/dsp/io/android/AndroidAudioInputStream.java
++++ b/src/android/be/tarsos/dsp/io/android/AndroidAudioInputStream.java
+@@ -50,7 +50,9 @@ public class AndroidAudioInputStream implements TarsosDSPAudioInputStream{
+ 
+ 	@Override
+ 	public void close() throws IOException {
+-		underlyingStream.stop();
++        if (underlyingStream.getState() != AudioRecord.STATE_UNINITIALIZED) {
++		    underlyingStream.stop();
++        }
+ 		underlyingStream.release();
+ 	}
+ 
+diff --git a/src/android/be/tarsos/dsp/io/android/AndroidAudioPlayer.java b/src/android/be/tarsos/dsp/io/android/AndroidAudioPlayer.java
+index 8846033..6fa4221 100644
+--- a/src/android/be/tarsos/dsp/io/android/AndroidAudioPlayer.java
++++ b/src/android/be/tarsos/dsp/io/android/AndroidAudioPlayer.java
+@@ -103,7 +103,9 @@ public class AndroidAudioPlayer implements AudioProcessor {
+     @Override
+     public void processingFinished() {
+         audioTrack.flush();
+-        audioTrack.stop();
++        if (audioTrack.getState() != AudioTrack.STATE_UNINITIALIZED) {
++            audioTrack.stop();
++        }
+         audioTrack.release();
+     }
+ }
+diff --git a/src/android/be/tarsos/dsp/io/android/AndroidFFMPEGLocator.java b/src/android/be/tarsos/dsp/io/android/AndroidFFMPEGLocator.java
+index 9053c9e..4547bdb 100644
+--- a/src/android/be/tarsos/dsp/io/android/AndroidFFMPEGLocator.java
++++ b/src/android/be/tarsos/dsp/io/android/AndroidFFMPEGLocator.java
+@@ -23,9 +23,9 @@ import java.io.OutputStream;
+  * </p>
+  * 
+  * <li>
+- * <ul><code>assets/x86_ffmpeg</code> for x86</ul>
+- * <ul><code>assets/armeabi-v7a_ffmpeg</code> for armeabi-v7a</ul>
+- * <ul><code>assets/armeabi-v7a-neon_ffmpeg</code> for armeabi-v7a-neon</ul>
++ * <ul><code>assets/x86-64_ffmpeg</code> for x86-64</ul>
++ * <ul><code>assets/armeabi-v7a-neon_ffmpeg</code> for armeabi-v7a (with or without neon)</ul>
++ * <ul><code>assets/arm64-v8a_ffmpeg</code> for arm64-v8a</ul>
+  * </li>
+  * 
+  * 
+@@ -65,12 +65,18 @@ public class AndroidFFMPEGLocator {
+             case X86:
+                 ffmpegFileName = "x86_ffmpeg";
+                 break;
++            case X86_64:
++                ffmpegFileName = "x86-64_ffmpeg";
++                break;
+             case ARMEABI_V7A:
+                 ffmpegFileName = "armeabi-v7a_ffmpeg";
+                 break;
+             case ARMEABI_V7A_NEON:
+                 ffmpegFileName = "armeabi-v7a-neon_ffmpeg";
+                 break;
++            case ARM64_V8A:
++                ffmpegFileName = "arm64-v8a_ffmpeg";
++                break;
+             default:
+                 ffmpegFileName = null;
+                 String message= "Could not determine your processor architecture correctly, no ffmpeg binary available.";
+@@ -129,7 +135,7 @@ public class AndroidFFMPEGLocator {
+     }
+ 
+     private enum CPUArchitecture{
+-        X86,ARMEABI_V7A,ARMEABI_V7A_NEON;
++        X86,X86_64,ARMEABI_V7A,ARMEABI_V7A_NEON,ARM64_V8A;
+     }
+ 
+     private boolean isCPUArchitectureSupported(String alias) {
+@@ -147,8 +153,12 @@ public class AndroidFFMPEGLocator {
+ 
+     private CPUArchitecture getCPUArchitecture() {
+         // check if device is x86
+-        if (isCPUArchitectureSupported("x86")) {
++        if (isCPUArchitectureSupported("x86_64")) {
++            return CPUArchitecture.X86_64;
++        } else if (isCPUArchitectureSupported("x86")) {
+             return CPUArchitecture.X86;
++        } else if (isCPUArchitectureSupported("arm64-v8a")) {
++            return CPUArchitecture.ARM64_V8A;
+         } else if (isCPUArchitectureSupported("armeabi-v7a")) {
+             // check if NEON is supported:
+             if (isNeonSupported()) {
