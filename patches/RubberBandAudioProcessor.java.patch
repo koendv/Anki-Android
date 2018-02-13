@@ -1,0 +1,38 @@
+diff --git a/AnkiDroid/src/main/java/be/tarsos/dsp/rubberband/RubberBandAudioProcessor.java b/AnkiDroid/src/main/java/be/tarsos/dsp/rubberband/RubberBandAudioProcessor.java
+index 3c3826b86..1f4096d8c 100644
+--- a/AnkiDroid/src/main/java/be/tarsos/dsp/rubberband/RubberBandAudioProcessor.java
++++ b/AnkiDroid/src/main/java/be/tarsos/dsp/rubberband/RubberBandAudioProcessor.java
+@@ -6,20 +6,9 @@ import com.breakfastquay.rubberband.RubberBandStretcher;
+ 
+ import be.tarsos.dsp.AudioEvent;
+ import be.tarsos.dsp.AudioProcessor;
+-import be.tarsos.util.FileUtils;
+ 
+ public class RubberBandAudioProcessor implements AudioProcessor {
+ 	
+-		static{
+-			try {
+-                System.loadLibrary("rubberband-jni");
+-				// FileUtils.loadLibrary();
+-			} catch (IOException e) {
+-				// TODO Auto-generated catch block
+-				e.printStackTrace();
+-			}
+-		}
+-		
+ 		private final RubberBandStretcher rbs;
+ 
+ 		public RubberBandAudioProcessor(int sampleRate,double initialTimeRatio, double initialPitchScale){
+diff --git a/AnkiDroid/src/main/java/com/breakfastquay/rubberband/RubberBandStretcher.java b/AnkiDroid/src/main/java/com/breakfastquay/rubberband/RubberBandStretcher.java
+index a10409417..865206d78 100644
+--- a/AnkiDroid/src/main/java/com/breakfastquay/rubberband/RubberBandStretcher.java
++++ b/AnkiDroid/src/main/java/com/breakfastquay/rubberband/RubberBandStretcher.java
+@@ -103,7 +103,7 @@ public class RubberBandStretcher
+     public static final int PercussiveOptions          = 0x00102000;
+ 
+     static {
+-	//System.loadLibrary("rubberband");
++	    System.loadLibrary("rubberband-jni");
+     }
+ };
+ 

@@ -67,6 +67,7 @@ import android.media.AudioTrack;
 import be.tarsos.dsp.AudioDispatcher;
 import be.tarsos.dsp.AudioEvent;
 import be.tarsos.dsp.DetermineDurationProcessor;
+import be.tarsos.dsp.GainProcessor;
 import be.tarsos.dsp.StopAudioProcessor;
 import be.tarsos.dsp.io.android.AndroidAudioPlayer;
 import be.tarsos.dsp.io.android.AndroidFFMPEGLocator;
@@ -75,6 +76,7 @@ import be.tarsos.dsp.pitch.PitchDetectionHandler;
 import be.tarsos.dsp.pitch.PitchDetectionResult;
 import be.tarsos.dsp.pitch.PitchProcessor;
 import be.tarsos.dsp.pitch.PitchProcessor.PitchEstimationAlgorithm;
+import be.tarsos.dsp.rubberband.RubberBandAudioProcessor;
 import be.tarsos.dsp.writer.WriterProcessor;
 
 import com.ichi2.anki.AbstractFlashcardViewer;
@@ -196,6 +198,17 @@ public class Pitch {
         }
         mAudioDispatcher.addAudioProcessor(new StopAudioProcessor(duration_sec));
         drawPitch(1, true);
+        return;
+    }
+
+    /* play mp3/wav file 'soundPath' slowed down by a factor slowDown */
+    public void playKaraoke (String soundPath, double slowDown) {
+        stop();
+        mAudioDispatcher = AudioDispatcherFactory.fromPipe(soundPath, sampleRates.TrackSampleRate(), sampleRates.TrackBufferSizeInSamples(), 0);
+        mAudioDispatcher.addAudioProcessor(new RubberBandAudioProcessor(sampleRates.TrackSampleRate(), slowDown, 1.0));
+        mAudioDispatcher.addAudioProcessor(new GainProcessor(1.0));
+        mAudioDispatcher.addAudioProcessor(new AndroidAudioPlayer(mAudioDispatcher.getFormat(), sampleRates.TrackBufferSizeInSamples(), AudioManager.STREAM_MUSIC));
+        new Thread(mAudioDispatcher, "Audio Dispatcher").start();
         return;
     }
 

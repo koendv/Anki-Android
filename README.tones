@@ -1,0 +1,38 @@
+Short overview of pitch handling:
+
+expandPitch() in Sound.java expands the '[pitch]' in the card template to html. When the user hits record, the Webview opens a url "playsound:@rec@". This executes record() in Pitch.java.  The heavy lifting of extracting pitch is done by a library "TarsosDSP". This library requires statically linked ffmpeg binaries in the assets/ directory. Whenever TarsosDSP has extracted a pitch frequency, handlePitch() in Pitch.java gets called. This results in the Webview getting a javascript call to graph_add() in assets/scripts/pitch.js. The actual drawing of the graph is done in assets/scripts/flotr2.js. ./be/
+If the Karaoke option is switched on, the reference pronunciation is played back during recording. Slowing down the reference pronunciation is done using librubberband, a time-stretching libary. If tone contour is switched on, stylized graph of is drawn from the pinyin using assets/scripts/toneprot.js.
+
+---
+
+Extracting the pitch requires TarsosDSP from https://github.com/JorenSix/TarsosDSP, patched with Anki-Android/patches/TarsosDSP-Android-2.4.patch
+Anki-Android/AnkiDroid/libs/TarsosDSP-Android-2.4.jar
+
+TarsosDSP requires statically built ffmpeg binaries for Android from https://github.com/koendv/FFmpeg-Audio-Android
+Anki-Android/AnkiDroid/src/main/assets/x86-64_ffmpeg
+Anki-Android/AnkiDroid/src/main/assets/armeabi-v7a_ffmpeg
+Anki-Android/AnkiDroid/src/main/assets/armeabi-v7a-neon_ffmpeg
+Anki-Android/AnkiDroid/src/main/assets/arm64-v8a_ffmpeg
+
+Slowing down playback during karaoke is done using Rubberband, an audio time-stretching and pitch-shifting library from https://github.com/breakfastquay/rubberband
+
+Adding RubberBand to TarsosDSP requires some java from https://github.com/JorenSix/RubberBandJNI
+Anki-Android/AnkiDroid/src/main/java/be/tarsos/dsp/rubberband/RubberBandAudioProcessor.java
+Anki-Android/AnkiDroid/src/main/java/com/breakfastquay/rubberband/RubberBandStretcher.java
+
+RubberBand on Android needs the following shared libaries from https://github.com/koendv/rubberband
+src/main/jniLibs/armeabi/librubberband-jni.so
+src/main/jniLibs/armeabi-v7a/librubberband-jni.so
+src/main/jniLibs/arm64-v8a/librubberband-jni.so
+src/main/jniLibs/x86_64/librubberband-jni.so
+
+Creating the stylized tone contour is done using javascript 
+Anki-Android/AnkiDroid/src/main/assets/scripts/toneprot.js
+This javascript is from the "SpeakGoodChinese.org" project:
+https://robvanson.github.io/sgc3/toneprot.js
+https://robvanson.github.io/sgc3/audioProcessing.js
+
+The actual drawing of the graphs is done using flotr2, from https://github.com/HumbleSoftware/Flotr2, patched with Anki-Android/patches/flotr2.js.patch
+Anki-Android/AnkiDroid/src/main/assets/scripts/flotr2.js
+
+---

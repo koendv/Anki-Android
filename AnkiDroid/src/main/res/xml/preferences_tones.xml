@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://arbitrary.app.namespace/com.ichi2.anki">
+
+    <CheckBoxPreference
+        android:defaultValue="false"
+        android:key="tones_enabled"
+        android:summary="@string/tones_enable_summ"
+        android:title="@string/tones_enable_title" />
+    <CheckBoxPreference
+        android:defaultValue="false"
+        android:dependency="tones_enabled"
+        android:key="tones_karaoke_enabled"
+        android:title="@string/tones_enable_karaoke_title" />
+    <com.ichi2.ui.SeekBarPreference
+        android:defaultValue="100"
+        android:dependency="tones_karaoke_enabled"
+        android:key="tones_karaoke_speed"
+        android:max="200"
+        android:summary="@string/tones_karaoke_speed_summ"
+        android:text=" %"
+        android:title="@string/tones_karaoke_speed_title"
+        app:interval="10"
+        app:min="50" />
+    <CheckBoxPreference
+        android:defaultValue="false"
+        android:dependency="tones_enabled"
+        android:key="tones_contour_enabled"
+        android:summary="@string/tones_contour_summ"
+        android:title="@string/tones_contour_title" />
+</PreferenceScreen>

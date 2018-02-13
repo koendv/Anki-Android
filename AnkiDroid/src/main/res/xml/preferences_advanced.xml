@@ -129,6 +129,9 @@
                 android:summary="@string/double_scrolling_gap_summ"
                 android:title="@string/double_scrolling_gap" />
             <Preference
+                android:key="tones_link"
+                android:title="@string/tones_title"/>
+            <Preference
                 android:key="advanced_statistics_link"
                 android:title="@string/advanced_statistics_title"/>
         </PreferenceCategory>

@@ -182,6 +182,7 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
             // in from preferences screen), so we need to update it here.
             updatePreference(prefs, "syncAccount", this);
             updatePreference(prefs, "custom_sync_server_link", this);
+            updatePreference(prefs, "tones_link", this);
             updatePreference(prefs, "advanced_statistics_link", this);
         }
     }
@@ -332,6 +333,16 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                         return true;
                     }
                 });
+                // Chinese Tones option
+                Preference tonesPreference = screen.findPreference("tones_link");
+                tonesPreference.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+                    public boolean onPreferenceClick(Preference preference) {
+                        Intent i = CompatHelper.getCompat().getPreferenceSubscreenIntent(Preferences.this,
+                                "com.ichi2.anki.prefs.tones");
+                        startActivity(i);
+                        return true;
+                    }
+                });
                 // Advanced statistics option
                 Preference advancedStatisticsPreference = screen.findPreference("advanced_statistics_link");
                 advancedStatisticsPreference.setOnPreferenceClickListener(new OnPreferenceClickListener() {
@@ -359,6 +370,10 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
             case "com.ichi2.anki.prefs.custom_sync_server":
                 getSupportActionBar().setTitle(R.string.custom_sync_server_title);
                 listener.addPreferencesFromResource(R.xml.preferences_custom_sync_server);
+                break;
+            case "com.ichi2.anki.prefs.tones": // Chinese tones
+                getSupportActionBar().setTitle(R.string.tones_title);
+                listener.addPreferencesFromResource(R.xml.preferences_tones);
                 break;
             case "com.ichi2.anki.prefs.advanced_statistics":
                 getSupportActionBar().setTitle(R.string.advanced_statistics_title);
@@ -603,6 +618,13 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                 pref.setSummary(AnkiDroidApp.getSharedPrefs(this).getString("syncBaseUrl", ""));
             }
         }
+          else if (pref.getKey().equals("tones_link")) {
+            if (!AnkiDroidApp.getSharedPrefs(this).getBoolean("tones_enabled", false)) {
+                pref.setSummary(R.string.disabled);
+            } else {
+                pref.setSummary(R.string.enabled);
+            }
+        }
           else if (pref.getKey().equals("advanced_statistics_link")) {
             if (!AnkiDroidApp.getSharedPrefs(this).getBoolean("advanced_statistics_enabled", false)) {
                 pref.setSummary(R.string.disabled);
@@ -802,6 +824,7 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
             // in from preferences screen), so we need to update it here.
             ((Preferences) getActivity()).updatePreference(prefs, "syncAccount", this);
             ((Preferences) getActivity()).updatePreference(prefs, "custom_sync_server_link", this);
+            ((Preferences) getActivity()).updatePreference(prefs, "tones_link", this);
             ((Preferences) getActivity()).updatePreference(prefs, "advanced_statistics_link", this);
         }
 

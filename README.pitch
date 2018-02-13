@@ -1,3 +1,0 @@
-Short overview of pitch handling:
-
-expandPitch() in Sound.java expands the '[pitch]' in the card template to html. When the user hits record, the Webview opens a url "playsound:@rec@". This executes record() in Pitch.java.  The heavy lifting of extracting pitch is done by a library "TarsosDSP". This library requires statically linked ffmpeg binaries in the assets/ directory. Whenever TarsosDSP has extracted a pitch frequency, handlePitch() in Pitch.java gets called. This results in the Webview getting a javascript call to graph_add() in assets/scripts/pitch.js. The actual drawing of the graph is done in assets/scripts/flotr2.js. 
