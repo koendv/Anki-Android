@@ -12,7 +12,7 @@ This is beta software. Use at your own risk.
 
 Pre-compiled .apk for Android : [AnkiDroid.apk](http://www.kdvelectronics.eu/anki_with_tones/AnkiDroid-debug.apk)
 
-Sample Anki deck to practice Mandarin Chinese tones:  [Mandarin Tone Pair Drills](https://ankiweb.net/shared/info/1219331632)
+Sample Anki deck to practice Mandarin Chinese tones:  [Mandarin Tone Pair Drills](https://ankiweb.net/shared/info/699329711)
 
 Usage
 -----
