@@ -21,6 +21,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -30,9 +31,9 @@ import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.MediaStore;
+
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-
 import android.view.Display;
 import android.view.WindowManager;
 import android.webkit.MimeTypeMap;
@@ -41,8 +42,8 @@ import android.widget.VideoView;
 import com.ichi2.anki.AbstractFlashcardViewer;
 import com.ichi2.anki.AnkiDroidApp;
 import com.ichi2.anki.ReadText;
-import com.ichi2.libanki.Pitch;
 import com.ichi2.compat.CompatHelper;
+import com.ichi2.libanki.Pitch;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -65,18 +66,15 @@ public class Sound {
     public static Pattern sSoundPattern = Pattern.compile("\\[sound\\:([^\\[\\]]*)\\]");
 
     /**
+     * Pattern used to parse URI (according to http://tools.ietf.org/html/rfc3986#page-50)
+     */
+    private static Pattern sUriPattern = Pattern.compile("^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?$");
+
+    /**
      *  Pitch detection
      */
 
     private static Pitch mPitch = new Pitch();
-    private static boolean usePitch = false;
-    public static Pattern sPitchPattern = Pattern.compile("\\[pitch\\]");
-    private static final int REQUEST_AUDIO_PERMISSION = 0;
-
-    /**
-     * Pattern used to parse URI (according to http://tools.ietf.org/html/rfc3986#page-50)
-     */
-    private static Pattern sUriPattern = Pattern.compile("^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?$");
 
     /**
      * Media player used to play the sounds
@@ -206,15 +204,10 @@ public class Sound {
      * @return -- the same content but in a format that will render working play buttons when audio was embedded
      */
     public static String expandSounds(String soundDir, String content) {
-        content = expandPitch(new String(content));
-
-        /* erase recording of previous card */
-        if (mPitch != null) {
-            mPitch.erase();
-        }
-
         StringBuilder stringBuilder = new StringBuilder();
         String contentLeft = content;
+        SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(AnkiDroidApp.getInstance().getBaseContext());
+        boolean tonesEnabled = preferences.getBoolean("tones_enabled", false);
 
         Timber.d("expandSounds");
 
@@ -240,15 +233,32 @@ public class Sound {
             int markerStart = contentLeft.indexOf(soundMarker);
             stringBuilder.append(contentLeft.substring(0, markerStart));
 
-            // If we are using pitch, add pitch graph.
-            if (usePitch) {
-                stringBuilder.append("<div id=\"pitch0\" class=\"pitch_graph\"></div>");
+            // If we are using tones, add graphs of voice pitch.
+            if (tonesEnabled) {
+                
+                // We encode the action in an ?action= parameter.
+                // record: record speech from microphone
+                // replay: playback speech recorded from microphone
+                // play: play mp3 with reference speech.    /**
+
+                if (mPitch != null) {
+                    mPitch.erase(); // Erase previous recording
                 }
 
-            // The <span> around the button (SVG or PNG image) is needed to make the vertical alignment work.
-            stringBuilder.append("<a class='replaybutton' href=\"playsound:" + soundPath + "\">"
-                    + "<span>"+ button
-                    + "</span></a>");
+                String pitchGraph1 =  "<div id=\"pitch1\" class=\"pitch_graph\"></div>" +
+                    "<a class='replaybutton' href=\"playsound:" + soundPath + "?action=record\"><span><svg viewBox=\"0 0 32 32\"><circle cx=\"16\" cy=\"16\" r=\"8\" stroke=\"black\" width=\"2\" fill=\"red\" />Record</svg></span></a>" +
+                        "<a class='replaybutton' href=\"playsound:" + soundPath + "?action=stop\"><span><svg viewBox=\"0 0 32 32\"><rect x=\"7\" y=\"7\" width=\"16\" height=\"16\" fill=\"black\" />Stop</svg></span></a>" +
+                        "<a class='replaybutton' href=\"playsound:" + soundPath + "?action=playback\"><span><svg viewBox=\"0 0 32 32\"><polygon points=\"11,25 25,16 11,7\" fill=\"black\" />Playback</svg></span></a>";
+                stringBuilder.append(pitchGraph1);
+                String pitchGraph0 =  "<div id=\"pitch0\" class=\"pitch_graph\"></div>" +
+                    "<a class='replaybutton' href=\"playsound:" + soundPath + "?action=replay\"><span><svg viewBox=\"0 0 32 32\"><polygon points=\"11,25 25,16 11,7\"/>Replay</svg></span></a>";
+                stringBuilder.append(pitchGraph0);
+            } else {
+                // The <span> around the button (SVG or PNG image) is needed to make the vertical alignment work.
+                stringBuilder.append("<a class='replaybutton' href=\"playsound:" + soundPath + "\">"
+                        + "<span>" + button
+                        + "</span></a>");
+            }
             contentLeft = contentLeft.substring(markerStart + soundMarker.length());
             Timber.d("Content left = %s", contentLeft);
         }
@@ -261,42 +271,6 @@ public class Sound {
         return stringBuilder.toString();
     }
 
-
-    /**
-     * expandPitch takes content with embedded pitch graph placeholders and expands them to html
-     *
-     * @param content -- card content to be rendered that may contain embedded audio
-     * @return -- the same content but in a format that will render working play buttons when audio was embedded
-     */
-    public static String expandPitch(String content) {
-        StringBuilder stringBuilder = new StringBuilder();
-        String contentLeft = content;
-
-        Timber.d("expandPitch");
-
-        usePitch = false;
-        Matcher matcher = sPitchPattern.matcher(content);
-        // While [pitch] markers can be found
-        while (matcher.find()) {
-            usePitch = true;
-
-            String pitchGraph =  " <div id=\"pitch1\" class=\"pitch_graph\"></div>" +
-                "<a class='replaybutton' href=\"playsound:@rec@\"><span><svg viewBox=\"0 0 32 32\"><circle cx=\"16\" cy=\"16\" r=\"8\" stroke=\"black\" width=\"2\" fill=\"red\" />Replay</svg></span></a>" +
-                "<a class='replaybutton' href=\"playsound:@stop@\"><span><svg viewBox=\"0 0 32 32\"><rect x=\"7\" y=\"7\" width=\"16\" height=\"16\" fill=\"black\" />Replay</svg></span></a>" +
-                "<a class='replaybutton' href=\"playsound:@play@\"><span><svg viewBox=\"0 0 32 32\"><polygon points=\"11,25 25,16 11,7\" fill=\"black\" />Replay</svg></span></a>";
-
-            String pitchMarker = matcher.group();
-            int markerStart = contentLeft.indexOf(pitchMarker);
-            stringBuilder.append(contentLeft.substring(0, markerStart));
-            stringBuilder.append(pitchGraph);
-            contentLeft = contentLeft.substring(markerStart + pitchMarker.length());
-            Timber.d("Content left = %s", contentLeft);
-        }
-
-        stringBuilder.append(contentLeft);
-
-        return stringBuilder.toString();
-    }
 
     /**
      * Plays the sounds for the indicated sides
@@ -354,6 +328,19 @@ public class Sound {
     public void playSound(String soundPath, OnCompletionListener playAllListener, final VideoView videoView) {
         Timber.d("Playing %s has listener? %b", soundPath, playAllListener != null);
         Uri soundUri = Uri.parse(soundPath);
+        String soundAction = soundUri.getQueryParameter("action");
+
+        // Check whether voice pitch analysis requested
+        if (soundAction != null) {
+            checkAudioPermission();
+            try {
+                mPitch.playSound(soundUri.getPath(), soundAction);
+            } catch (Exception e) {
+                Timber.e(e, "playSounds - Error detecting voice pitch %s", soundPath);
+                mPitch.stop();
+            }
+            return;
+        }
 
         if (soundPath.substring(0, 3).equals("tts")) {
             // TODO: give information about did
@@ -378,20 +365,6 @@ public class Sound {
                 ((AbstractFlashcardViewer) mCallingActivity.get()).playVideo(soundPath);
                 return;
             }
-
-            // Pitch detection
-            try {
-                if ((usePitch) && (mPitch != null)) {
-                    checkAudioPermission();
-
-                    mPitch.playSound(soundPath);
-                    return;
-                }
-            } catch (Exception e) {
-                Timber.e(e, "playSounds - Error detecting pitch %s", soundPath);
-                mPitch.stop();
-            }
-
             // Play media
             try {
                 // Create media player
@@ -565,8 +538,12 @@ public class Sound {
     public boolean hasAnswer() {
         return mSoundPaths.containsKey(Sound.SOUNDS_ANSWER);
     }
-    
-    // Request permission to record from microphone
+
+    /**
+     * Request permission to record from microphone 
+     * Needed by voice pitch handling
+     */
+    private static final int REQUEST_AUDIO_PERMISSION = 801;
     private void checkAudioPermission() {
         if (ContextCompat.checkSelfPermission(AnkiDroidApp.getInstance().getApplicationContext(), Manifest.permission.RECORD_AUDIO) !=
                 PackageManager.PERMISSION_GRANTED) {

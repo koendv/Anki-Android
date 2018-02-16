@@ -11,6 +11,7 @@
         android:defaultValue="false"
         android:dependency="tones_enabled"
         android:key="tones_karaoke_enabled"
+        android:summary="@string/tones_enable_karaoke_summary"
         android:title="@string/tones_enable_karaoke_title" />
     <com.ichi2.ui.SeekBarPreference
         android:defaultValue="100"

@@ -37,7 +37,7 @@
 	 * * where t_rise = rise time in milliseconds
 	 * *  t_fall = 100.4 + 5.8 * d
 	 * * where t_fall = fall time in milliseconds
-	 * * with
+	 * * with d in semitones (12 semitones to an octave):
 	 * *  d = 12 * ln(f/f0) / ln(2)
 	 * * and f > f0.
 	 *
@@ -60,13 +60,11 @@
 package com.ichi2.libanki;
 
 import android.content.Context;
-import android.media.AudioFormat;
+import android.content.SharedPreferences;
 import android.media.AudioManager;
-import android.media.AudioTrack;
 
 import be.tarsos.dsp.AudioDispatcher;
 import be.tarsos.dsp.AudioEvent;
-import be.tarsos.dsp.DetermineDurationProcessor;
 import be.tarsos.dsp.GainProcessor;
 import be.tarsos.dsp.StopAudioProcessor;
 import be.tarsos.dsp.io.android.AndroidAudioPlayer;
@@ -100,15 +98,33 @@ import timber.log.Timber;
 public class Pitch {
 
     private AudioDispatcher mAudioDispatcher = null;
+    private AudioDispatcher mKaraokeDispatcher = null;
     private AndroidAudioPlayer mAndroidAudioPlayer = null;
     private PitchProcessor mPitchProcessor = null;
-    private String recordPath;
-    private boolean recorded = false;
+    private String recordPath; // filename of recording
+    private boolean recorded = false; // true if file with name recordPath exists
+    private String timeStretchPath; // filename of timestretchec speedh
+    private boolean timeStretched = false; // true if file with name timeStretchPath exists
     private SampleRates sampleRates = new SampleRates();
     private double mLastPitchTimeStamp = 0; // time of last detected pitch, in seconds. -1 if no pitch detected yet.
     private List<double[]> pitchData = new ArrayList<double[]>(); /* arraylist of (time, frequency) pairs. */
+    private class TimeValue {
+        public final double t;
+        public final double y;
+        public TimeValue(double t_val, double y_val) {
+            this.t = t_val;
+            this.y = y_val;
+        }
+    }
+    private List<TimeValue> TimeSeries = new ArrayList<TimeValue>(); /* timeseries of (time, value) pairs */
 
     private static WeakReference<Context> mReviewer;
+
+    /* Preference Panel */
+    boolean tonesEnabled = false;
+    boolean karaokeEnabled = false;
+    int karaokeSpeed = 100;
+    boolean contourEnabled = false;
 
     /*
      * safety factor.
@@ -123,16 +139,27 @@ public class Pitch {
         new AndroidFFMPEGLocator(AnkiDroidApp.getInstance().getApplicationContext());
 
         /* build temp filename for recordings */
-        File recordDir = AnkiDroidApp.getInstance().getApplicationContext().getCacheDir();
+        File cacheDir = AnkiDroidApp.getInstance().getApplicationContext().getCacheDir();
         File recordFile = null;
         try {
-            recordFile = File.createTempFile("record", ".wav", recordDir);
+            recordFile = File.createTempFile("record", ".wav", cacheDir);
             recordFile.deleteOnExit();
         } catch (IOException e) {
             Timber.e("Failed to create temp .wav file");
             e.printStackTrace();
         }
         recordPath = recordFile.getPath();
+
+        /* build temp filename for time-stretching */
+        File timeStretchFile = null;
+        try {
+            timeStretchFile = File.createTempFile("record", ".wav", cacheDir);
+            timeStretchFile.deleteOnExit();
+        } catch (IOException e) {
+            Timber.e("Failed to create time-stretching .wav file");
+            e.printStackTrace();
+        }
+        timeStretchPath = timeStretchFile.getPath();
     }
 
     public static void initialize(Context context) {
@@ -140,32 +167,52 @@ public class Pitch {
         mReviewer = new WeakReference<>(context);
     }
 
-    public void playSound(String soundPath) {
+    /*
+     * Get preferences from Settings panel
+     */
+    private void getPreferences() {
+        SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(AnkiDroidApp.getInstance().getBaseContext());
 
-        if  (soundPath.equals("@stop@")) {
-            stop();
-        } else {
-            if (soundPath.equals("@rec@")) {
-                /* record microphone to file 'record.wav' */
-                record();
-                recorded = true;
-            } else {
-                if (soundPath.equals("@play@")) {
-                    /* playback microphone recording from file "record.wav" */
-                    if (recorded) play(recordPath, 1); /* if not recorded do not playback */
-                } else {
-                    /* default: play audio file soundPath */
-                    play(soundPath, 0); 
-                }
-            }
-        }
-
+        int oldKaraokeSpeed = karaokeSpeed;
+        tonesEnabled = preferences.getBoolean("tones_enabled", false);
+        karaokeEnabled = preferences.getBoolean("tones_karaoke_enabled", false);
+        karaokeSpeed = preferences.getInt("tones_karaoke_speed", 100);
+        contourEnabled = preferences.getBoolean("tones_contour_enabled", false);
+        if (oldKaraokeSpeed != karaokeSpeed)
+            timeStretched = false; // time stretch ratio changed
         return;
     }
+
+    /*
+     * Called when a playsound: button with action=[stop|record|playback|replay] is pressed
+     */
+
+    public void playSound(String soundPath, String soundAction) {
+
+        getPreferences();
+
+        if (soundAction.equals("stop")) {
+            /* stop all playback and recording */
+            stop();
+        } else if (soundAction.equals("record")) {
+            /* record microphone to file 'record.wav' */
+            record();
+            recorded = true;
+            if (karaokeEnabled) playKaraoke(soundPath);
+        } else if (soundAction.equals("playback") && recorded) {
+            /* playback microphone recording from file "record.wav" */
+            play(recordPath, 1);
+        } else if (soundAction.equals("replay")) {
+            /* play audio file soundPath */
+            play(soundPath, 0);
+        }
+        return;
+     }
 
     /* 'erase' recording */
     public void erase () {
         recorded = false;
+        timeStretched = false;
         return;
     }
 
@@ -173,6 +220,8 @@ public class Pitch {
     public void stop () {
         if ((mAudioDispatcher != null) && !mAudioDispatcher.isStopped())
             mAudioDispatcher.stop();
+        if ((mKaraokeDispatcher != null) && !mKaraokeDispatcher.isStopped())
+            mKaraokeDispatcher.stop();
         return;
     }
 
@@ -201,14 +250,40 @@ public class Pitch {
         return;
     }
 
-    /* play mp3/wav file 'soundPath' slowed down by a factor slowDown */
-    public void playKaraoke (String soundPath, double slowDown) {
-        stop();
-        mAudioDispatcher = AudioDispatcherFactory.fromPipe(soundPath, sampleRates.TrackSampleRate(), sampleRates.TrackBufferSizeInSamples(), 0);
-        mAudioDispatcher.addAudioProcessor(new RubberBandAudioProcessor(sampleRates.TrackSampleRate(), slowDown, 1.0));
-        mAudioDispatcher.addAudioProcessor(new GainProcessor(1.0));
-        mAudioDispatcher.addAudioProcessor(new AndroidAudioPlayer(mAudioDispatcher.getFormat(), sampleRates.TrackBufferSizeInSamples(), AudioManager.STREAM_MUSIC));
-        new Thread(mAudioDispatcher, "Audio Dispatcher").start();
+    /* play mp3/wav file 'soundPath' with time-stretching */
+    public void playKaraoke (String soundPath) {
+        /*
+         * Time-stretching is processor-intensive.
+         * Do time-stretching only once, before playback, and write time-stretched audio to temp file.
+         * Playback is then simply playing a .wav file
+         */
+        double timeRatio = karaokeSpeed / 100.0;
+        if (!timeStretched) {
+            // create time-stretched audio
+            try {
+                AudioDispatcher timeStretchDispatcher = AudioDispatcherFactory.fromPipe(soundPath, sampleRates.TrackSampleRate(), sampleRates.TrackBufferSizeInSamples(), 0);
+                timeStretchDispatcher.addAudioProcessor(new RubberBandAudioProcessor(sampleRates.TrackSampleRate(), timeRatio, 1.0));
+                timeStretchDispatcher.addAudioProcessor(new GainProcessor(1.0)); // buffer
+                timeStretchDispatcher.addAudioProcessor(new WriterProcessor(timeStretchDispatcher.getFormat(), new RandomAccessFile(timeStretchPath, "rw")));
+                timeStretchDispatcher.run();
+                timeStretched = true;
+            } catch (FileNotFoundException e) {
+                Timber.d("RubberBand exception - could not write temp file");
+            } catch (RuntimeException e){
+            Timber.d("RubberBand exception");
+            }
+        }
+        try {
+            mKaraokeDispatcher = AudioDispatcherFactory.fromPipe(timeStretchPath, sampleRates.TrackSampleRate(), sampleRates.TrackBufferSizeInSamples(), 0);
+            mKaraokeDispatcher.addAudioProcessor(new AndroidAudioPlayer(mKaraokeDispatcher.getFormat(), sampleRates.TrackBufferSizeInSamples(), AudioManager.STREAM_MUSIC));
+            new Thread(mKaraokeDispatcher, "Karaoke Audio Dispatcher").start();
+        } catch (RuntimeException e) {
+            Timber.d("Karaoke exception");
+        }
+
+
+
+
         return;
     }
 
@@ -434,6 +509,13 @@ public class Pitch {
 
         return true;
     }
+
+    /* Convert frequency in Hz to semitone. There are 12 semitones in an octave. */
+    private double hertzToSemitone (double f) {
+        final double scale = 12 / Math.log(2);
+        return scale * Math.log(f);
+    }
+
 
 }
 
