@@ -2,13 +2,6 @@
  * graphs for tone pitch recognition
  */
 
-var graph;
-
-(function () {
-    graph_draw(0);
-    graph_draw(1);
-})();
-
 /*
  * begin drawing graph. 
  * g is 0 or 1, depending upon whether we are drawing the tones of the question or the answer.
@@ -20,7 +13,9 @@ function graph_draw(graph_number, data) {
 
     var 
         ymin = null,
-        ymax = null;
+        ymax = null,
+        graph;
+
 
     if (graph_number == 0) {
         container = document.getElementById('pitch0');
