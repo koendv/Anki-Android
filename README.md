@@ -10,7 +10,7 @@ Downloads
 ---------
 This is beta software. Use at your own risk.
 
-Pre-compiled .apk for Android : [AnkiDroid.apk](http://www.kdvelectronics.eu/anki_with_tones/AnkiDroid-debug.apk)
+Pre-compiled .apk for Android : [AnkiDroid.apk](https://github.com/koendv/Anki-Android/raw/hotfix-2.8.3/release/AnkiDroid-debug.apk)
 
 Sample Anki deck to practice Mandarin Chinese tones:  [Mandarin Tone Pair Drills](https://ankiweb.net/shared/info/699329711)
 
