@@ -75,6 +75,7 @@ public class Sound {
      */
 
     private static Pitch mPitch = new Pitch();
+    private static boolean tonesEnabled = false;
 
     /**
      * Media player used to play the sounds
@@ -206,10 +207,11 @@ public class Sound {
     public static String expandSounds(String soundDir, String content) {
         StringBuilder stringBuilder = new StringBuilder();
         String contentLeft = content;
-        SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(AnkiDroidApp.getInstance().getBaseContext());
-        boolean tonesEnabled = preferences.getBoolean("tones_enabled", false);
-
         Timber.d("expandSounds");
+
+        /* update prefs */
+        SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(AnkiDroidApp.getInstance().getBaseContext());
+        tonesEnabled = preferences.getBoolean("tones_enabled", false);
 
         Matcher matcher = sSoundPattern.matcher(content);
         // While there is matches of the pattern for sound markers
@@ -331,8 +333,9 @@ public class Sound {
         String soundAction = soundUri.getQueryParameter("action");
 
         // Check whether voice pitch analysis requested
-        if (soundAction != null) {
+        if (tonesEnabled) {
             checkAudioPermission();
+            if (soundAction == null) soundAction = "replay";
             try {
                 mPitch.playSound(soundUri.getPath(), soundAction);
             } catch (Exception e) {
