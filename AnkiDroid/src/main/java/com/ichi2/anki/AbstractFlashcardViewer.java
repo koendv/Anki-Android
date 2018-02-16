@@ -173,6 +173,12 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
 
     protected static final int MENU_DISABLED = 3;
 
+    /**
+     * Postpone playing multimedia until page has finished loading
+     */
+    private boolean mFlashCardLoading = false;
+    private boolean mPlaySoundsPending = false;
+    private boolean mPlaySoundsDoReplay = false;
 
     /**
      * Broadcast that informs us when the sd card is about to be unmounted
@@ -1574,6 +1580,11 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
             public void onPageFinished(WebView view, String url) {
                 Timber.d("onPageFinished triggered");
                 view.loadUrl("javascript:onPageFinished();");
+                mFlashCardLoading = false;
+                if (mPlaySoundsPending) {
+                    mPlaySoundsPending = false;
+                    playSounds(mPlaySoundsDoReplay);
+                }
             }
         });
         // Set transparent color to prevent flashing white when night mode enabled
@@ -2219,6 +2230,16 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
      *            pressing the keyboard shortcut R on the desktop
      */
     protected void playSounds(boolean doAudioReplay) {
+
+        /*
+         * If webview has not finished loading, postpone playSounds until onPageFinished is called.
+         */
+        if (mFlashCardLoading) {
+            mPlaySoundsPending = true;
+            mPlaySoundsDoReplay = doAudioReplay;
+            return;
+        }
+
         boolean replayQuestion = getConfigForCurrentCard().optBoolean("replayq", true);
 
         if (getConfigForCurrentCard().optBoolean("autoplay", false) || doAudioReplay) {
@@ -2319,6 +2340,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
     public void fillFlashcard() {
         Timber.d("fillFlashcard()");
         Timber.d("base url = %s", mBaseUrl);
+        mFlashCardLoading = true;
         if (!mUseQuickUpdate && mCard != null && mNextCard != null) {
             CompatHelper.getCompat().setHTML5MediaAutoPlay(mNextCard.getSettings(), getConfigForCurrentCard().optBoolean("autoplay"));
             mNextCard.loadDataWithBaseURL(mBaseUrl + "__viewer__.html", mCardContent.toString(), "text/html", "utf-8", null);
