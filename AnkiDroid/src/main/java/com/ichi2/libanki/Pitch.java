@@ -270,7 +270,7 @@ public class Pitch {
             } catch (FileNotFoundException e) {
                 Timber.d("RubberBand exception - could not write temp file");
             } catch (RuntimeException e){
-            Timber.d("RubberBand exception");
+            Timber.d("RubberBand runtime exception");
             }
         }
         try {
@@ -278,11 +278,8 @@ public class Pitch {
             mKaraokeDispatcher.addAudioProcessor(new AndroidAudioPlayer(mKaraokeDispatcher.getFormat(), sampleRates.TrackBufferSizeInSamples(), AudioManager.STREAM_MUSIC));
             new Thread(mKaraokeDispatcher, "Karaoke Audio Dispatcher").start();
         } catch (RuntimeException e) {
-            Timber.d("Karaoke exception");
+            Timber.d("Karaoke playback exception");
         }
-
-
-
 
         return;
     }
