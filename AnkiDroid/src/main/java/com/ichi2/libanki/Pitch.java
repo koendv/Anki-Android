@@ -85,13 +85,12 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.ref.WeakReference;
+import java.lang.StringBuilder;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.ListIterator;
-
-import org.json.JSONArray;
 
 import timber.log.Timber;
 
@@ -107,16 +106,15 @@ public class Pitch {
     private boolean timeStretched = false; // true if file with name timeStretchPath exists
     private SampleRates sampleRates = new SampleRates();
     private double mLastPitchTimeStamp = 0; // time of last detected pitch, in seconds. -1 if no pitch detected yet.
-    private List<double[]> pitchData = new ArrayList<double[]>(); /* arraylist of (time, frequency) pairs. */
-    private class TimeValue {
-        public final double t;
-        public final double y;
-        public TimeValue(double t_val, double y_val) {
-            this.t = t_val;
-            this.y = y_val;
+    private class PitchValue {
+        public final float t;
+        public final float y;
+        public PitchValue(float t_val, float y_val) {
+            this.t = t_val; /* time in seconds */
+            this.y = y_val; /* frequency in semitones */
         }
     }
-    private List<TimeValue> TimeSeries = new ArrayList<TimeValue>(); /* timeseries of (time, value) pairs */
+    private List<PitchValue> pitchSeries = new ArrayList<PitchValue>(); /* timeseries of (time, semiTones) pairs */
 
     private static WeakReference<Context> mReviewer;
 
@@ -124,15 +122,7 @@ public class Pitch {
     boolean tonesEnabled = false;
     boolean karaokeEnabled = false;
     int karaokeSpeed = 100;
-    boolean contourEnabled = false;
-
-    /*
-     * safety factor.
-     * Determines how hard pitch values are filtered for outliers and glitches.
-     * safety factor value is higher than 1. Suggested value 1.66.
-     * A value of 1 means hard filtering; a value of 4 in practice does not remove anything.
-     */
-    final private double safety_factor = 1.66; /* value between 1 (hard) and 4 (no) removing outliers/glitches */
+    boolean toneContourEnabled = false;
 
     public Pitch() {
         /* find ffmpeg binaries */
@@ -177,7 +167,7 @@ public class Pitch {
         tonesEnabled = preferences.getBoolean("tones_enabled", false);
         karaokeEnabled = preferences.getBoolean("tones_karaoke_enabled", false);
         karaokeSpeed = preferences.getInt("tones_karaoke_speed", 100);
-        contourEnabled = preferences.getBoolean("tones_contour_enabled", false);
+        toneContourEnabled = preferences.getBoolean("tones_contour_enabled", false);
         if (oldKaraokeSpeed != karaokeSpeed)
             timeStretched = false; // time stretch ratio changed
         return;
@@ -273,6 +263,7 @@ public class Pitch {
             Timber.d("RubberBand runtime exception");
             }
         }
+        // playback time-stretched audio
         try {
             mKaraokeDispatcher = AudioDispatcherFactory.fromPipe(timeStretchPath, sampleRates.TrackSampleRate(), sampleRates.TrackBufferSizeInSamples(), 0);
             mKaraokeDispatcher.addAudioProcessor(new AndroidAudioPlayer(mKaraokeDispatcher.getFormat(), sampleRates.TrackBufferSizeInSamples(), AudioManager.STREAM_MUSIC));
@@ -285,7 +276,7 @@ public class Pitch {
     }
 
     /* draw pitch graph */
-    private void drawPitch(int graphNumber, final boolean recordingFromMicrophone) {
+    private void drawPitch(final int graphNumber, final boolean recordingFromMicrophone) {
 
         mLastPitchTimeStamp = -1;
 
@@ -311,35 +302,72 @@ public class Pitch {
         }
 
         /* the graph is drawn by sending javascript to the webview. See pitch.js */
-        pitchData = new ArrayList<double[]>();
+        pitchSeries = new ArrayList<PitchValue>(); /* clear all values */
 
         final int graphNr = graphNumber;
 
         mAudioDispatcher.addAudioProcessor(new PitchProcessor(PitchEstimationAlgorithm.FFT_YIN, sampleRate, FFTSize, new PitchDetectionHandler() {
             @Override
             public void handlePitch(PitchDetectionResult pitchDetectionResult, AudioEvent audioEvent) {
-                final float pitchInHz = pitchDetectionResult.getPitch();
-                final float secondsProcessed = mAudioDispatcher.secondsProcessed();
-
-                /* add data point (secondsProcessed, pitchInHz) to data */
-                double[] dataPoint = {secondsProcessed, pitchInHz};
-                pitchData.add(dataPoint);
-
-                /* pass data on to javascript */
-                JSONArray jscript_data = new JSONArray(FilterPitch(pitchData));
-
-                /* draw graph */
-                ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript("graph_draw(" + graphNr + ", " + jscript_data.toString() + " )");
+                float pitch = pitchDetectionResult.getPitch();
+                float secondsProcessed = mAudioDispatcher.secondsProcessed();
+                boolean lastPitch = false;
 
                 /* end recording if 0.5 seconds of "silence" */
-                if (pitchInHz != -1) {
+                if (pitch != -1) {
+                    /* convert to semitones */
+                    pitch = hertzToSemitone(pitch);
                     /* pitch detected, update timestamp */
                     mLastPitchTimeStamp = secondsProcessed;
+
                 }
                 else {
                     /* end recording if 0.5 seconds without detecting pitch */
-                    if (recordingFromMicrophone && (mLastPitchTimeStamp > 0) && ((secondsProcessed - mLastPitchTimeStamp) > 0.5)) mAudioDispatcher.stop();
+                    if (recordingFromMicrophone && (mLastPitchTimeStamp > 0) && ((secondsProcessed - mLastPitchTimeStamp) > 0.5)) {
+                        mAudioDispatcher.stop();
+                        lastPitch = true;
+                    }
                 }
+
+                /* add data point (secondsProcessed, pitchInHz) to data */
+                pitchSeries.add(new PitchValue(secondsProcessed, pitch));
+                /* clean up measured pitch */
+                List<PitchValue> filteredPitch = FilterPitch(pitchSeries);
+
+                if (pitchSeries.size() > 2) {
+                    /* Build javascript command */
+                    StringBuilder jscriptCmd = new StringBuilder(1024);
+                    jscriptCmd.append("graph_draw(");
+                    jscriptCmd.append(graphNr);
+                    jscriptCmd.append(", [");
+                    Iterator<PitchValue> pitchValueIterator = filteredPitch.iterator();
+                    String bracket = "[";
+                    while (pitchValueIterator.hasNext()) {
+                        jscriptCmd.append(bracket);
+                        PitchValue pitchValue = pitchValueIterator.next();
+                        jscriptCmd.append(pitchValue.t);
+                        jscriptCmd.append(',');
+                        jscriptCmd.append(pitchValue.y);
+                        jscriptCmd.append(']');
+                        bracket = ",[";
+                    }
+                    jscriptCmd.append("], ");
+                    String pinyin = null;
+                    if (lastPitch && toneContourEnabled && (graphNr == 1) && ((pinyin = getPinyin()) != null)) {
+                        jscriptCmd.append('"');
+                        jscriptCmd.append(pinyin);
+                        jscriptCmd.append('"');
+                    }
+                    else {
+                        jscriptCmd.append("null");
+                    }
+                    jscriptCmd.append(')');
+
+                    /* draw graph */
+                    ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript(jscriptCmd.toString());
+                }
+
+
             }
         }));
         new Thread(mAudioDispatcher, "Audio Dispatcher").start();
@@ -354,165 +382,188 @@ public class Pitch {
      */
 
 
-    private  List<double[]> FilterPitch( List<double[]> pitchArray) {
-        List<double[]> dta = pitchArray;
-        ListIterator<double[]> litr = null;
+    private  List<PitchValue> FilterPitch( List<PitchValue> pitchArray) {
+        ListIterator<PitchValue> litr = null;
 
         /* pass 1. check frequency range */
+
         /*
          * Chinese speech has a pitch range of less than an octave.
          * If pitch range is more than an octave,
          * remove max (or min) pitch sample if it's just a blip.
          */
 
-        List<double[]> dta0 = new ArrayList<double[]>();
-
+        List<PitchValue> out1 = new ArrayList<PitchValue>();
         /* create sorted list of pitch values */
-        List<Double> freq = new ArrayList<Double>();
-        litr = dta.listIterator();
+        List<Float> semitones = new ArrayList<Float>();
+
+        litr = pitchArray.listIterator();
         while (litr.hasNext()){
-            double point[] = litr.next();
-            double f = point[1];
-            if (f != -1)
-                freq.add(f);
+            PitchValue p = litr.next();
+            if (p.y != -1)
+                semitones.add(p.y);
         }
 
-        Collections.sort(freq);
+        Collections.sort(semitones);
 
         /* determine cutoff points so maximum number of data points fits in an octave */
-        double
+
+        float
                 cutoff_low = -1,
                 cutoff_high = -1,
-                max_pitch_range = 2.0 * safety_factor; /* pitch range across the four tones in normal speech is  2 (an octave) */
+                /* pitch_range_in_semitones Determines how hard tones are filtered */
+                pitch_range_in_semitones = 14; /* pitch range across the four tones in normal speech is 12 semitones (an octave) */
 
         int count = -1;
 
         /* safe initial values */
-        if (!freq.isEmpty()){
-            cutoff_low = freq.get(0);
-            cutoff_high = freq.get(freq.size()-1);
+        if (!semitones.isEmpty()){
+            cutoff_low = semitones.get(0);
+            cutoff_high = semitones.get(semitones.size()-1);
         }
 
-        for (int i = 0; i < freq.size(); i++) {
-            double f_low = freq.get(i);
-            for (int j = freq.size()-1; j >= i; --j) {
+        for (int i = 0; i < semitones.size(); i++) {
+            float semitone_low = semitones.get(i);
+            for (int j = semitones.size()-1; j >= i; --j) {
                 if (j - i + 1 < count)
                     break;
-                double f_high = freq.get(j);
-                if (f_high < max_pitch_range * f_low) {
+                float semitone_high = semitones.get(j);
+                if (semitone_high - semitone_low > pitch_range_in_semitones) {
                     if (j - i + 1 > count) {
-                        cutoff_low = f_low;
-                        cutoff_high = f_high;
+                        cutoff_low = semitone_low;
+                        cutoff_high = semitone_high;
                         count = j - i + 1;
                     }
                     break;
                 }
             }
         }
-        /* Timber.d("cutoff " + cutoff_low + " Hz to " + cutoff_high + " Hz"); */
 
         /* copy pitch values within range cutoff_low..cutoff_high (and silences) */
-        litr = dta.listIterator();
+        litr = pitchArray.listIterator();
         while (litr.hasNext()) {
-            double[] point = litr.next();
-            double pitch = point[1];
-            if ((pitch == -1) || ((pitch >= cutoff_low) && (pitch <= cutoff_high)))
-                dta0.add(point);
+            PitchValue p = litr.next();
+            if ((p.y == -1) || ((p.y >= cutoff_low) && (p.y <= cutoff_high)))
+                out1.add(p);
             else
-                Timber.d("drop outlier " + point[0] + " s " + point[1] +" Hz");
+                Timber.d("drop outlier " + p.t + " s " + p.y +" semitone");
         }
 
-        /* pass 2. check pitch rise and fall time. */
-        List<double[]> dta1 = new ArrayList<double[]>();
-        litr = dta0.listIterator();
-        double[] pt_curr = new double[] {-1, -1};
-        double[] pt_next = litr.next();
-        boolean check_curr = true;
-        boolean check_next = true;
+        /* pass 2. Bandpass filter. Limit rise and fall time. */
 
-        while (litr.hasNext()) {
-            pt_curr = pt_next;
-            pt_next = litr.next();
-            check_curr = check_next;
-            check_next = checkSlewRate(pt_curr, pt_next);
+        List<PitchValue> out2 = new ArrayList<PitchValue>();
 
-            /* drop if transition to and from this freq was too fast */
-            if (!check_curr && !check_next) {
-                Timber.d("drop pitch rate " + pt_curr[0] + " s " + pt_curr[1] +" Hz");
-                continue;
-            }
+        if (out1.size() > 2) {
+            litr = out1.listIterator();
+            PitchValue pt_curr = new PitchValue(-1, -1);
+            PitchValue pt_next = litr.next();
+            boolean check_curr = true;
+            boolean check_next = true;
+
+            while (litr.hasNext()) {
+                pt_curr = pt_next;
+                pt_next = litr.next();
+                check_curr = check_next;
+                check_next = checkSlewRate(pt_curr, pt_next);
+
+                /* drop pitch value if transition to and from this freq was too fast */
+                if (!check_curr && !check_next) {
+                    Timber.d("drop pitch rate limit " + pt_curr.t + " s " + pt_curr.y + " semitones");
+                    check_next = true; /* avoid next pitch value being discarded */
+                    continue;
+                }
 
             /* valid data point */
-            dta1.add(pt_curr);
+                out2.add(pt_curr);
+            }
+            out2.add(pt_next);
+        } else {
+            /* too few pitch values for filtering */
+            out2 = out1;
         }
-        dta1.add(pt_next);
 
         /* pass 3. replace multiple frequency == -1 values (unknown freq.) by a single -1 value */
-        List<double[]> dta2 = new ArrayList<double[]>();
-        litr = dta1.listIterator();
+
+        List<PitchValue> out3 = new ArrayList<PitchValue>();
+        litr = out1.listIterator();
         while (litr.hasNext()) {
-            double[] point = litr.next();
-            if ((point[1] == -1) && (dta2.isEmpty() || (dta2.get(dta2.size() - 1)[1] == -1)))
+            PitchValue p = litr.next();
+            if ((p.y == -1) && (out3.isEmpty() || (out3.get(out3.size() - 1).y == -1)))
                 continue;
-            dta2.add(point);
+            out3.add(p);
         }
 
         /* if last element has frequency -1 then remove last element */
-        if (!dta2.isEmpty() && (dta2.get(dta2.size() - 1)[1] == -1))
-            dta2.remove(dta2.size() - 1);
+        if (!out3.isEmpty() && (out3.get(out3.size() - 1).y == -1))
+            out3.remove(out3.size() - 1);
 
-        return dta2;
-    }
-
-    /*
-     * check whether transition from p0 [t0, f0] to p1 [t1, f1] is within what a human voice can do.
-     */
-
-    private boolean checkSlewRate(double p0[], double p1[]){
-        double t0, t1, f0, f1;
-
-        /* make sure t0 < t1 */
-        if (p0[0] < p1[0]) {
-            t0 = p0[0];
-            t1 = p1[0];
-            f0 = p0[1];
-            f1 = p1[1];
+        /* pass 4. begin at time = 0 */
+        List<PitchValue> out4 = new ArrayList<PitchValue>();
+        float begin_time = 0;
+        if (!out3.isEmpty()) {
+            begin_time = out3.get(0).t;
         }
-        else {
-            t0 = p1[0];
-            t1 = p0[0];
-            f0 = p1[1];
-            f1 = p0[1];
+        litr = out3.listIterator();
+        while (litr.hasNext()) {
+            PitchValue p = litr.next();
+            out4.add(new PitchValue(p.t - begin_time, p.y));
         }
 
-        final double delta_t = t1 - t0;
-
-        /*
-         * check frequency slew rate against t_rise and t_fall,
-         */
-
-        /* f = -1 indicates no pitch detected */
-        if ((f0 <= 0) || (f1 <= 0))
-            return true;
-        else if (f1 > f0) {
-            /* rising */
-            double rise_time = 0.1506 * Math.log(f1/f0);
-            return (delta_t * safety_factor > rise_time);
-        } else if (f1 < f0) {
-            /* falling */
-            double fall_time = 0.1004 * Math.log(f0/f1);
-            return (delta_t * safety_factor > fall_time);
-        }
-
-        return true;
+        return out4;
     }
 
     /* Convert frequency in Hz to semitone. There are 12 semitones in an octave. */
-    private double hertzToSemitone (double f) {
-        final double scale = 12 / Math.log(2);
-        return scale * Math.log(f);
+    final float semitone_scale =  12 / (float)Math.log(2);
+
+    private float hertzToSemitone (float f) {
+        /* this can be done faster using Math.exponent() and some simple math.
+         * See 'calculating Integer log base 2 of a float in Java' */
+        if (f < 1.0) return 0; // avoid exceptions
+        return semitone_scale * (float)Math.log(f);
     }
 
+    private boolean checkSlewRate (PitchValue p0, PitchValue p1) {
+        /*
+         * rise time and fall time in seconds per semitone, according to
+         * The Oxford Handbook of Chinese Linguistics,
+         * Ch. 36, "Intonation in Chinese", pp. 490-491,
+         */
+        final float rise_time = (float) 0.0087; /* in semitones per second */
+        final float fall_time = (float) 0.0058; /* in semitones per second */
+        float t0, t1, d0, d1;
+
+        /* make sure t0 < t1 */
+        if (p0.t < p1.t) {
+            t0 = p0.t;
+            t1 = p1.t;
+            d0 = p0.t;
+            d1 = p1.t;
+        } else {
+            t0 = p1.t;
+            t1 = p0.t;
+            d0 = p1.t;
+            d1 = p0.t;
+        }
+        final float delta_t = t1 - t0;
+
+        /* check rise and fall times */
+        if ((d0 < 0) || (d1 < 0))
+            /* semitone -1 indicates no pitch */
+            return true;
+        else if (d1 > d0) {
+            /* rising */
+            float d_max = d0 + delta_t / rise_time;
+            return d1 < d_max;
+        } else {
+            /* falling */
+            float d_min = d0 - delta_t / fall_time;
+            return d1 > d_min;
+        }
+    }
+
+    private String getPinyin() {
+        return "shen2me";
+    }
 
 }
 
