@@ -237,7 +237,7 @@ public class Pitch {
          * Do time-stretching only once, before playback, and write time-stretched audio to temp file.
          * Playback is then simply playing a .wav file
          */
-        double timeRatio = karaokeSpeed / 100.0;
+        double timeRatio = 100.0 / karaokeSpeed;
         if (!timeStretched) {
             // create time-stretched audio
             try {
