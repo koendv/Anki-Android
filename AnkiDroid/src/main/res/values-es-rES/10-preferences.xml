@@ -177,6 +177,16 @@
   <string name="custom_buttons_setting_if_room">Mostrar si hay espacio</string>
   <string name="custom_buttons_setting_menu_only">Sólo el menú</string>
   <string name="reset_custom_buttons">Restaurar a predeterminado</string>
+  <!-- Tone settings -->
+  <string name="tones_title">Tonos</string>
+  <string name="tones_enable_title">Activar tonos</string>
+  <string name="tones_enable_summary"></string>
+  <string name="tones_enable_karaoke_title">Activar karaoke</string>
+  <string name="tones_enable_karaoke_summary">Se necesitan auriculares</string>
+  <string name="tones_karaoke_speed_title">Ajuste de velocidad</string>
+  <string name="tones_karaoke_speed_summary"></string>
+  <string name="tones_contour_title">Trazar tono modelo</string>
+  <string name="tones_contour_summary"></string>
   <!-- Advanced statistics settings -->
   <string name="advanced_statistics_title">Estadísticas avanzadas</string>
   <string name="enable_advanced_statistics_title">Activar estadísticas avanzadas</string>

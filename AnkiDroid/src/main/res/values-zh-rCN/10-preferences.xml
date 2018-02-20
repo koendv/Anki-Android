@@ -177,6 +177,16 @@
   <string name="custom_buttons_setting_if_room">有空间时显示</string>
   <string name="custom_buttons_setting_menu_only">仅限菜单</string>
   <string name="reset_custom_buttons">重置为默认设置</string>
+  <!-- Tone settings -->
+  <string name="tones_title">调线</string>
+  <string name="tones_enable_title">启用调线</string>
+  <string name="tones_enable_summary"></string>
+  <string name="tones_enable_karaoke_title">卡拉OK</string>
+  <string name="tones_enable_karaoke_summary">使用耳机</string>
+  <string name="tones_karaoke_speed_title">计算速度</string>
+  <string name="tones_karaoke_speed_summary"></string>
+  <string name="tones_contour_title">画调线</string>
+  <string name="tones_contour_summary"></string>
   <!-- Advanced statistics settings -->
   <string name="advanced_statistics_title">高级统计</string>
   <string name="enable_advanced_statistics_title">启用高级统计</string>

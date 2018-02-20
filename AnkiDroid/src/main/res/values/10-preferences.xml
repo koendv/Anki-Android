@@ -159,18 +159,16 @@
     <string name="custom_buttons_setting_menu_only">Menu only</string>
     <string name="reset_custom_buttons">Reset to default</string>
 
-    <!-- Chinese tone settings -->
+    <!-- Tone settings -->
     <string name="tones_title">Tones</string>
     <string name="tones_enable_title">Enable tones</string>
-    <string name="tones_enable_summ">Display tones as you speak</string>
-    <string name="tones_enable_karaoke_title">Karaoke</string>
-    <string name="tones_enable_karaoke_summary">Repeating after a native speaker (Requires earphones)</string>
-    <string name="tones_karaoke_speed">Karaoke speed</string>
+    <string name="tones_enable_summary">Display tones as you speak</string>
+    <string name="tones_enable_karaoke_title">Enable karaoke</string>
+    <string name="tones_enable_karaoke_summary">Requires earphones</string>
     <string name="tones_karaoke_speed_title">Karaoke playback speed</string>
-    <string name="tones_karaoke_speed_summ">Move marker to the left for faster, or to the right for slower playback</string>
-    <string name="tones_contour_title">Tone contour</string>
-    <string name="tones_contour_summ">Draws stylized tone</string>
-    <string name="tones_warning_slow">Warning: System may be too slow</string>
+    <string name="tones_karaoke_speed_summary"></string>
+    <string name="tones_contour_title">Draw stylized tone </string>
+    <string name="tones_contour_summary"></string>
 
     <!-- Advanced statistics settings -->
     <string name="advanced_statistics_title">Advanced statistics</string>

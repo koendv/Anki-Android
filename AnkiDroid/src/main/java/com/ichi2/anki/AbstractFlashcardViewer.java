@@ -2912,4 +2912,24 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
             });
         }
     }
+
+    /* Hook to get field from current card */
+    public String getField(String fieldName) {
+        String retval = null;
+        try {
+            JSONArray ja = mCurrentCard.model().getJSONArray("flds");
+            // loop over fields
+            for (int i = 0; i < ja.length(); i++) {
+                String name = (String) (ja.getJSONObject(i).get("name"));
+                if (name.equals(fieldName)) {
+                    retval = mCurrentCard.note().getItem(name);
+                    break;
+                }
+            }
+        } catch (JSONException e) {
+            Timber.d("getField JSONException");
+        }
+        //Timber.d("getField " + fieldName + " = "+ retval);
+        return retval;
+    }
 }

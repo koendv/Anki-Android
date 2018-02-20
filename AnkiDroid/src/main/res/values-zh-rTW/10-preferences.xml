@@ -177,6 +177,16 @@
   <string name="custom_buttons_setting_if_room">Show if room</string>
   <string name="custom_buttons_setting_menu_only">Menu only</string>
   <string name="reset_custom_buttons">Reset to default</string>
+  <!-- Tone settings -->
+  <string name="tones_title">調線</string>
+  <string name="tones_enable_title">啟用調線</string>
+  <string name="tones_enable_summary"></string>
+  <string name="tones_enable_karaoke_title">啟用卡拉OK</string>
+  <string name="tones_enable_karaoke_summary">使用耳機</string>
+  <string name="tones_karaoke_speed_title">計算速度</string>
+  <string name="tones_karaoke_speed_summary"></string>
+  <string name="tones_contour_title">畫調線</string>
+  <string name="tones_contour_summary"></string>
   <!-- Advanced statistics settings -->
   <string name="advanced_statistics_title">Advanced statistics</string>
   <string name="enable_advanced_statistics_title">Enable advanced statistics</string>

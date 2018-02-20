@@ -5,7 +5,7 @@
     <CheckBoxPreference
         android:defaultValue="false"
         android:key="tones_enabled"
-        android:summary="@string/tones_enable_summ"
+        android:summary="@string/tones_enable_summary"
         android:title="@string/tones_enable_title" />
     <CheckBoxPreference
         android:defaultValue="false"
@@ -17,16 +17,16 @@
         android:defaultValue="100"
         android:dependency="tones_karaoke_enabled"
         android:key="tones_karaoke_speed"
-        android:max="200"
-        android:summary="@string/tones_karaoke_speed_summ"
+        android:max="125"
+        android:summary="@string/tones_karaoke_speed_summary"
         android:text=" %"
         android:title="@string/tones_karaoke_speed_title"
-        app:interval="10"
+        app:interval="5"
         app:min="50" />
     <CheckBoxPreference
         android:defaultValue="false"
         android:dependency="tones_enabled"
         android:key="tones_contour_enabled"
-        android:summary="@string/tones_contour_summ"
+        android:summary="@string/tones_contour_summary"
         android:title="@string/tones_contour_title" />
 </PreferenceScreen>

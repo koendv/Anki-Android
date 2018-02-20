@@ -49,14 +49,6 @@
 	 *
 	 */
 
-	/*
-	 * XXX Todo: to run smoother on systems with slower cpu, take logarithm of
-	 * pitch frequency once, store logarithms in array, and do slew rate calculations
-	 * and draw pitch graph with stored logaritms only.
-	 * Todo: add karaoke mode?
-	 */
-
-
 package com.ichi2.libanki;
 
 import android.content.Context;
@@ -98,8 +90,6 @@ public class Pitch {
 
     private AudioDispatcher mAudioDispatcher = null;
     private AudioDispatcher mKaraokeDispatcher = null;
-    private AndroidAudioPlayer mAndroidAudioPlayer = null;
-    private PitchProcessor mPitchProcessor = null;
     private String recordPath; // filename of recording
     private boolean recorded = false; // true if file with name recordPath exists
     private String timeStretchPath; // filename of timestretchec speedh
@@ -562,7 +552,14 @@ public class Pitch {
     }
 
     private String getPinyin() {
-        return "shen2me";
+        String pinyin = null;
+
+        pinyin = ((AbstractFlashcardViewer) mReviewer.get()).getField("Pinyin");
+        if (pinyin == null) {
+            pinyin = ((AbstractFlashcardViewer) mReviewer.get()).getField("Reading");
+        }
+
+        return pinyin;
     }
 
 }
