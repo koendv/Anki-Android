@@ -183,9 +183,9 @@
   <string name="tones_enable_summary"></string>
   <string name="tones_enable_karaoke_title">卡拉OK</string>
   <string name="tones_enable_karaoke_summary">使用耳机</string>
-  <string name="tones_karaoke_speed_title">计算速度</string>
+  <string name="tones_karaoke_speed_title">调整速度</string>
   <string name="tones_karaoke_speed_summary"></string>
-  <string name="tones_contour_title">画调线</string>
+  <string name="tones_contour_title">显示调线</string>
   <string name="tones_contour_summary"></string>
   <!-- Advanced statistics settings -->
   <string name="advanced_statistics_title">高级统计</string>
