@@ -1,7 +1,10 @@
 Short overview of pitch handling:
 
-expandPitch() in Sound.java expands the '[pitch]' in the card template to html. When the user hits record, the Webview opens a url "playsound:@rec@". This executes record() in Pitch.java.  The heavy lifting of extracting pitch is done by a library "TarsosDSP". This library requires statically linked ffmpeg binaries in the assets/ directory. Whenever TarsosDSP has extracted a pitch frequency, handlePitch() in Pitch.java gets called. This results in the Webview getting a javascript call to graph_add() in assets/scripts/pitch.js. The actual drawing of the graph is done in assets/scripts/flotr2.js. ./be/
-If the Karaoke option is switched on, the reference pronunciation is played back during recording. Slowing down the reference pronunciation is done using librubberband, a time-stretching libary. If tone contour is switched on, stylized graph of is drawn from the pinyin using assets/scripts/toneprot.js.
+expandSounds() in Sound.java expands the {{Audio}} in the card template to html. When the user hits record, the Webview opens a url "playsound:x.mp3?action=record". This executes record() in Pitch.java.  The heavy lifting of extracting pitch is done by a library "TarsosDSP". This library requires statically linked ffmpeg binaries in the assets/ directory. Whenever TarsosDSP has extracted a pitch frequency, handlePitch() in Pitch.java gets called. This results in the Webview getting a javascript call to graph_draw() in assets/scripts/pitch.js. The actual drawing of the graph is done in assets/scripts/flotr2.js. 
+
+If the Karaoke option is switched on, the reference pronunciation is played back during recording. Slowing down the reference pronunciation is done using librubberband, a time-stretching libary. 
+
+If tone contour is switched on, a stylized graph of the pronunciation is drawn from the pinyin using assets/scripts/toneprot.js.
 
 ---
 
