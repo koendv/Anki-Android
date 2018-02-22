@@ -18,7 +18,8 @@ Sample Anki deck to practice Mandarin Chinese tones:  [Mandarin Tone Pair Drills
 Usage
 -----
 
-![Settings](https://raw.githubusercontent.com/koendv/Anki-Android/hotfix-2.8.3/docs/settings.png)[Tones](https://raw.githubusercontent.com/koendv/Anki-Android/hotfix-2.8.3/docs/tones.png)
+![Settings](https://raw.githubusercontent.com/koendv/Anki-Android/hotfix-2.8.3/docs/settings.png)
+![Tones](https://raw.githubusercontent.com/koendv/Anki-Android/hotfix-2.8.3/docs/tones.png)
 
 Choose a quiet spot to train your tones. 
 
