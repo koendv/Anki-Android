@@ -181,7 +181,7 @@
   <string name="tones_title">调线</string>
   <string name="tones_enable_title">启用调线</string>
   <string name="tones_enable_summary"></string>
-  <string name="tones_enable_karaoke_title">卡拉OK</string>
+  <string name="tones_enable_karaoke_title">启用卡拉OK</string>
   <string name="tones_enable_karaoke_summary">使用耳机</string>
   <string name="tones_karaoke_speed_title">调整速度</string>
   <string name="tones_karaoke_speed_summary"></string>
