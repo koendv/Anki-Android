@@ -49,7 +49,3 @@ Sources
 
 The sources are in the [hotfix-2.8.3 branch](https://github.com/koendv/Anki-Android/tree/hotfix-2.8.3).
 
-Todo
-----
-Stylized tone contours
-
