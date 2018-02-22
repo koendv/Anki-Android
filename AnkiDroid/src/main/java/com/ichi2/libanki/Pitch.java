@@ -321,42 +321,40 @@ public class Pitch {
 
                 /* add data point (secondsProcessed, pitchInHz) to data */
                 pitchSeries.add(new PitchValue(secondsProcessed, pitch));
+
                 /* clean up measured pitch */
                 List<PitchValue> filteredPitch = FilterPitch(pitchSeries);
 
-                if (pitchSeries.size() > 2) {
-                    /* Build javascript command */
-                    StringBuilder jscriptCmd = new StringBuilder(1024);
-                    jscriptCmd.append("graph_draw(");
-                    jscriptCmd.append(graphNr);
-                    jscriptCmd.append(", [");
-                    Iterator<PitchValue> pitchValueIterator = filteredPitch.iterator();
-                    String bracket = "[";
-                    while (pitchValueIterator.hasNext()) {
-                        jscriptCmd.append(bracket);
-                        PitchValue pitchValue = pitchValueIterator.next();
-                        jscriptCmd.append(pitchValue.t);
-                        jscriptCmd.append(',');
-                        jscriptCmd.append(pitchValue.y);
-                        jscriptCmd.append(']');
-                        bracket = ",[";
-                    }
-                    jscriptCmd.append("], ");
-                    String pinyin = null;
-                    if (lastPitch && toneContourEnabled && (graphNr == 1) && ((pinyin = getPinyin()) != null)) {
-                        jscriptCmd.append('"');
-                        jscriptCmd.append(pinyin);
-                        jscriptCmd.append('"');
-                    }
-                    else {
-                        jscriptCmd.append("null");
-                    }
-                    jscriptCmd.append(')');
-
-                    /* draw graph */
-                    ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript(jscriptCmd.toString());
+                /* Build javascript command */
+                StringBuilder jscriptCmd = new StringBuilder(1024);
+                jscriptCmd.append("graph_draw(");
+                jscriptCmd.append(graphNr);
+                jscriptCmd.append(", [");
+                Iterator<PitchValue> pitchValueIterator = filteredPitch.iterator();
+                String bracket = "[";
+                while (pitchValueIterator.hasNext()) {
+                    jscriptCmd.append(bracket);
+                    PitchValue pitchValue = pitchValueIterator.next();
+                    jscriptCmd.append(pitchValue.t);
+                    jscriptCmd.append(',');
+                    jscriptCmd.append(pitchValue.y);
+                    jscriptCmd.append(']');
+                    bracket = ",[";
                 }
+                jscriptCmd.append("], ");
+                String pinyin = null;
+                if (lastPitch && toneContourEnabled && (graphNr == 1) && ((pinyin = getPinyin()) != null)) {
+                    jscriptCmd.append('"');
+                    jscriptCmd.append(pinyin);
+                    jscriptCmd.append('"');
+                }
+                else {
+                    jscriptCmd.append("null");
+                }
+                jscriptCmd.append(')');
 
+                /* draw graph */
+                ((AbstractFlashcardViewer) mReviewer.get()).runJavaScript(jscriptCmd.toString());
 
             }
         }));
