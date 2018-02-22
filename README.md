@@ -31,6 +31,8 @@ The bottom half shows the tones of a native speaker, and has a single 'play' but
 
 The top half is for your own speech, and has three buttons: record, stop, play. Touch the red 'record' button and say the word(s) on the flashcard out loud. Touch the 'play' button to listen to your own pronunciation.
 
+The "karaoke" feature plays the reference speech while recording your voice. Use earphones when "karaoke" is enabled, else the microphone will pick up the loudspeaker instead of your voice..
+
 FAQ
 ---
 
