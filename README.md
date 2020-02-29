@@ -47,3 +47,7 @@ Sources
 
 The sources are in the [hotfix-2.8.3 branch](https://github.com/koendv/Anki-Android/tree/hotfix-2.8.3).
 
+With Hindsight
+-----
+This software uses a generic tone detection algorithm.  With hindsight, it would have been better to use a tone detection algorithm, tailored to Chinese speech. An example of such an algorithm is [BaNa](https://raw.githubusercontent.com/koendv/Anki-Android/hotfix-2.8.3/docs/10.1.1.569.9917.pdf).
+
